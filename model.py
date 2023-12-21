@@ -1,4 +1,5 @@
 # import datetime
+from datetime import date
 from typing import Annotated
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -17,25 +18,23 @@ class MoexBonds(Base):
 
     id: Mapped[intpk]
     shortname: Mapped[str | None]
-    # url: Mapped[str | None]
     secid: Mapped[str | None]
     isin: Mapped[str | None]
-    matdate: Mapped[str | None]
-    initialfacevalue: Mapped[float | None]
+    matdate: Mapped[date | None]
+    initialfacevalue: Mapped[int | None]
     faceunit: Mapped[str | None]
     listlevel: Mapped[int | None]
     daystoredemption: Mapped[int | None]
     facevalue: Mapped[float | None]
-    isqualifiedinvestors: Mapped[str | None]
-    couponfrequency: Mapped[float | None]
-    coupondate: Mapped[str | None]
+    isqualifiedinvestors: Mapped[int | None]
+    couponfrequency: Mapped[int | None]
+    coupondate: Mapped[date | None]
     couponpercent: Mapped[float | None]
     couponvalue: Mapped[float | None]
+    highrisk: Mapped[int | None]
     group: Mapped[str | None]
     type: Mapped[str | None]
     price: Mapped[float | None]
     accint: Mapped[float | None]
     effectiveyield: Mapped[float | None]
-    # margin: Mapped[float | None]
-    # day_percent: Mapped[float | None]
-    # year_percent: Mapped[float | None]
+    year_percent: Mapped[float | None]
