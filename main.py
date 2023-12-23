@@ -1,22 +1,23 @@
-from datetime import datetime
 from database import MoexORM
-from routers import BondList, Bond, MoexClient
+from routers import BondList, Bond, ContextStrategy
 
 
 def get_info():
-    # MoexORM.create_tables()
-    bond_strategy = Bond()
-    bond_list_strategy = BondList()
+    MoexORM.create_tables()
+    bond = Bond()
+    bond_list = BondList()
+    client = ContextStrategy(bond_list)
     page = 0
     while True:
         try:
-            list_bonds = next(
-                bond_list_strategy.generator_bonds(page=page))
+            client.set_strategy(bond_list)
+            list_bonds = client.execute_strategy(page=page)
             page += 1
+            client.set_strategy(bond)
             bonds = [detail for i in list_bonds
-                     if (detail := bond_strategy.get_detail_bond(i))]
+                     if (detail := client.execute_strategy(secid=i))]
 
-            # MoexORM.insert_data(bonds=bonds)
+            MoexORM.insert_data(bonds=bonds)
         except StopIteration:
             break
 

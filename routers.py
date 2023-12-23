@@ -1,31 +1,17 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 import logging
-import time
-from urllib import parse
-
 import requests
 
 
 class MoexStrategy(ABC):
-    '''Общий класс-стратегия работы с API Московской биржи'''
+    '''Общий интерфейс работы с API Московской биржи'''
 
     _API_MOEX_URL = 'https://iss.moex.com'
 
     @abstractmethod
-    def build_url(self, method_url: str, params: dict) -> str:
-        '''Конструктор url путей запросов к API moex'''
-
-        url_parts = list(parse.urlparse(self._API_MOEX_URL))
-        url_parts[2] = method_url
-        url_parts[4] = parse.urlencode(params)
-        result_url = parse.urlunparse(url_parts)
-
-        return result_url
-
-    # @abstractmethod
-    # def process_data(self):
-    #     pass
+    def process_data(self):
+        pass
 
 
 class BondList(MoexStrategy):
@@ -36,20 +22,10 @@ class BondList(MoexStrategy):
                             format='%(asctime)s - %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
         self.log = logging.getLogger(__class__.__name__)
+        self.session = requests.Session()
 
-    def build_url(self, method_url: str, params: dict) -> str:
-        '''Конструктор url путей запросов к получению списка
-           облигаций одной страници
-        '''
-
-        return super().build_url(method_url=method_url, params=params)
-
-    # def process_data(self):
-    #     start_time = datetime.now()
-    #     page = -1
-    #     while True:
-    #         page += 1
-    #         return next(self.generator_bonds(page=page, start_time=start_time))
+    def process_data(self, page):
+        return next(self.generator_bonds(page=page))
 
     def generator_bonds(self, page: int) -> list:
         '''Генерирование последовательности списка облигаций со всей биржи'''
@@ -79,10 +55,10 @@ class BondList(MoexStrategy):
             'start': start
         }
 
-        list_bonds_url = self.build_url(method_url=method_url, params=params)
-        raw_list_bonds = requests.get(list_bonds_url).json()
+        url = f'{self._API_MOEX_URL}{method_url}'
+        response = self.session.get(url=url, params=params).json()
 
-        return self._process_raw_bonds(raw_list_bonds)
+        return self._process_raw_bonds(raw_list_bonds=response)
 
     def _process_raw_bonds(self, raw_list_bonds: dict) -> list:
         '''Обработка необработанных данных облигаций'''
@@ -117,13 +93,7 @@ class Bond(MoexStrategy):
                             format='%(asctime)s - %(name)s - %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
         self.log = logging.getLogger(__class__.__name__)
-
-    def build_url(self, method_url: str, params: dict) -> str:
-        '''Конструктор url путей запросов к получению информации по
-           облигации
-        '''
-
-        return super().build_url(method_url=method_url, params=params)
+        self.session = requests.Session()
 
     def process_data(self, secid):
         return self.get_detail_bond(secid=secid)
@@ -138,15 +108,14 @@ class Bond(MoexStrategy):
             'description.columns': 'name, title, value',
             'iss.only': 'description'
         }
-        bond_url = self.build_url(method_url=method_url, params=params)
 
         try:
             # Запрос информации об облигации
-            bond_response = requests.get(bond_url)
-            bond_data = bond_response.json()
+            url = f'{self._API_MOEX_URL}{method_url}'
+            response = self.session.get(url=url, params=params).json()
 
             # Извлечение необходимых данных из ответа
-            description = bond_data.get('description')
+            description = response.get('description')
             data = description.get('data')
             columns = description.get('columns')
 
@@ -193,11 +162,13 @@ class Bond(MoexStrategy):
 
         except requests.exceptions.RequestException as e:
             # Обработка ошибок при запросе
-            self.log.info(f'Ошибка при получении сведений об облиг. для {secid}: {e}')
+            self.log.info(
+                f'Ошибка при получении сведений об облиг. для {secid}: {e}')
             return None
         except (KeyError, IndexError, TypeError, ValueError) as e:
             # Обработка ошибок при обработке данных
-            self.log.info(f'Ошибка при обработке сведений об облиг. для {secid}: {e}')
+            self.log.info(
+                f'Ошибка при обработке сведений об облиг. для {secid}: {e}')
             return None
 
     def _parse_date(self, date_str):
@@ -219,7 +190,8 @@ class Bond(MoexStrategy):
         secid = bond.get('secid')
 
         # Формирование URL для запроса истории доходности
-        method_url = f'/iss/history/engines/stock/markets/bonds/yields/{secid}.json'
+        method_url = f'/iss/history/engines/stock/markets/bonds/yields/{secid}\
+            .json'
         params = {
             'iss.meta': 'off',
             'sort_order': 'desc',
@@ -228,15 +200,13 @@ class Bond(MoexStrategy):
             'limit': 1
         }
 
-        bond_url = self.build_url(method_url=method_url, params=params)
-
         try:
             # Запрос истории доходности
-            bond_price_response = requests.get(bond_url)
-            bond_price_data = bond_price_response.json()
+            url = f'{self._API_MOEX_URL}{method_url}'
+            response = self.session.get(url=url, params=params).json()
 
             # Извлечение данных о доходности
-            history_yields = bond_price_data.get('history_yields')
+            history_yields = response.get('history_yields')
             data = history_yields.get('data')[0]
             columns = history_yields.get('columns')
 
@@ -253,11 +223,11 @@ class Bond(MoexStrategy):
 
         except requests.exceptions.RequestException as e:
             # Обработка ошибок при запросе
-            self.log.info(f'Ошибка при получении доходности MOEX для {secid}: {e}')
+            self.log.info(
+                f'Ошибка при получении доходности MOEX для {secid}: {e}')
             return {}
-        except (IndexError, TypeError) as e:
+        except (IndexError, TypeError):
             # Обработка ошибок при обработке данных
-            # self.log.info(f'Ошибка обработки доходности MOEX для {secid}: {e}')
             return {}
 
     def _calc_bond(self,
@@ -303,12 +273,14 @@ class Bond(MoexStrategy):
         return bond_info
 
 
-class MoexClient:
+class ContextStrategy:
+    '''Контекст работает с выбором стратегий и их выполнением'''
+
     def __init__(self, strategy):
         self.strategy = strategy
 
     def set_strategy(self, strategy):
         self.strategy = strategy
 
-    def execute_request(self, **kwargs):
+    def execute_strategy(self, **kwargs):
         return self.strategy.process_data(**kwargs)
