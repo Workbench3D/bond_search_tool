@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -25,3 +26,13 @@ class MoexORM:
             moex_bond = [MoexBonds(**i) for i in bonds]
             session.add_all(moex_bond)
             session.commit()
+
+    @staticmethod
+    def update_data(bonds: list):
+        moex_bond = [MoexBonds(**i) for i in bonds]
+        with session_factory() as session:
+            try:
+                session.bulk_save_objects(moex_bond)
+            except IntegrityError:
+                for bond in moex_bond:
+                    session.merge(bond)

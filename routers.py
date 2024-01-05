@@ -25,9 +25,9 @@ class BondList(MoexStrategy):
         self.session = requests.Session()
 
     def process_data(self, page):
-        return next(self.generator_bonds(page=page))
+        return next(self._generator_bonds(page=page))
 
-    def generator_bonds(self, page: int) -> list:
+    def _generator_bonds(self, page: int) -> list:
         '''Генерирование последовательности списка облигаций со всей биржи'''
 
         # Вывод информации о текущей странице
@@ -49,9 +49,10 @@ class BondList(MoexStrategy):
         start = page * limit
         params = {
             'iss.meta': 'off',
-            'securities.columns': 'secid, is_traded',
+            'securities.columns': 'secid',
             'engine': 'stock',
             'market': 'bonds',
+            'is_trading': 1,
             'start': start
         }
 
@@ -67,21 +68,12 @@ class BondList(MoexStrategy):
         if not securities_info:
             return []
 
-        columns = securities_info.get('columns')
-        secid_index = columns.index('secid')
-        is_traded_index = columns.index('is_traded')
+        # columns = securities_info.get('columns')
+        # secid_index = columns.index('secid')
         data = securities_info.get('data')
 
-        return self._filter_traded_bonds(data, secid_index, is_traded_index)
+        traded_bonds = [bond[0] for bond in data]
 
-    def _filter_traded_bonds(self,
-                             data: list,
-                             secid_index: int,
-                             is_traded_index: int) -> list:
-        '''Отбор списка торгуемых облигаций'''
-
-        traded_bonds = [bond[secid_index] for bond in data
-                        if bond[is_traded_index] == 1]
         return traded_bonds
 
 
@@ -96,16 +88,16 @@ class Bond(MoexStrategy):
         self.session = requests.Session()
 
     def process_data(self, secid):
-        return self.get_detail_bond(secid=secid)
+        return self._get_detail_bond(secid=secid)
 
-    def get_detail_bond(self, secid: str) -> dict:
+    def _get_detail_bond(self, secid: str) -> dict:
         '''Получение общей детальной информации по облигации'''
 
         # Формирование URL для запроса информации об облигации
         method_url = f'/iss/securities/{secid}.json'
         params = {
             'iss.meta': 'off',
-            'description.columns': 'name, title, value',
+            'description.columns': 'name, value',
             'iss.only': 'description'
         }
 
@@ -144,7 +136,7 @@ class Bond(MoexStrategy):
                 'type': str}
 
             # Создание словаря с информацией об облигации с необходимыми
-            #  ключами и не пустыми данными
+            # ключами и не пустыми данными
             bond_info = {}
             for i in data:
                 key_param = i[name_index].lower()
@@ -158,7 +150,7 @@ class Bond(MoexStrategy):
             if bond_info.get('isqualifiedinvestors') == 1:
                 return None
 
-            return self.get_moex_yield(bond=bond_info)
+            return self._get_moex_yield(bond=bond_info)
 
         except requests.exceptions.RequestException as e:
             # Обработка ошибок при запросе
@@ -178,7 +170,7 @@ class Bond(MoexStrategy):
         return (datetime.strptime(date_str, '%Y-%m-%d').date()
                 if date_str else None)
 
-    def get_moex_yield(self, bond: dict) -> dict:
+    def _get_moex_yield(self, bond: dict) -> dict:
         '''Получение доходности, цены и НКД'''
 
         # Определение временного интервала для запроса истории доходности
@@ -216,6 +208,7 @@ class Bond(MoexStrategy):
             bond_info = {param: data[columns.index(param.upper())]
                          for param in price_params}
 
+            bond_info = bond_info | self._get_amortization(secid=secid)
             bond = bond | bond_info
             bond = bond_info | self._calc_bond(bond_info=bond)
 
@@ -230,6 +223,35 @@ class Bond(MoexStrategy):
             # Обработка ошибок при обработке данных
             return {}
 
+    def _get_amortization(self, secid: str) -> dict:
+        date_now = datetime.now()
+        method_url = f'/iss/securities/{secid}/bondization.json'
+        params = {
+            'iss.meta': 'off',
+            'limit': 'unlimited'
+        }
+        url = f'{self._API_MOEX_URL}{method_url}'
+        response = self.session.get(url=url, params=params).json()
+        amortizations = len(response.get('amortizations').get('data')) > 1
+
+        sum_coupon = 0
+        dict_coupon = {}
+        for i in response.get('coupons').get('data'):
+            date = datetime.strptime(i[3], '%Y-%m-%d')
+            delta = date - date_now
+            if delta.days > 0:
+                coupon = i[9]
+                if coupon is None:
+                    coupon = 0
+                sum_coupon += coupon
+                dict_coupon[i[3]] = sum_coupon
+        sum_coupon = round(sum_coupon, 2)
+        for key, value in dict_coupon.items():
+            dict_coupon[key] = round(sum_coupon+1000-value, 2)
+        return {'amortizations': amortizations,
+                'sum_coupon': sum_coupon,
+                'profit': dict_coupon}
+
     def _calc_bond(self,
                    bond_info: dict,
                    commission: float = 0.3,
@@ -242,9 +264,10 @@ class Bond(MoexStrategy):
         price = bond_info.get('price')
         accint = bond_info.get('accint')
         face_value = bond_info.get('facevalue')
-        coupon_frequency = bond_info.get('couponfrequency')
+        # coupon_frequency = bond_info.get('couponfrequency')
         days_to_redemption = bond_info.get('daystoredemption')
-        coupon_value = bond_info.get('couponvalue')
+        # coupon_value = coupon_sum
+        coupon_sum = bond_info.get('sum_coupon')
 
         # Расчет цены покупки
         buy_price = face_value * price / 100 + accint
@@ -256,9 +279,9 @@ class Bond(MoexStrategy):
         sold_tax = max(0, sold_delta * tax / 100)
 
         # Расчет купонного дохода и налога на купоны
-        coupon_day = year // coupon_frequency
-        coupon_num = days_to_redemption // coupon_day + 1
-        coupon_sum = coupon_num * coupon_value
+        # coupon_day = year // coupon_frequency
+        # coupon_num = days_to_redemption // coupon_day + 1
+        # coupon_sum = coupon_num * coupon_value
         coupon_tax = coupon_sum * tax / 100
 
         # Расчет общего дохода и процента годовой доходности
