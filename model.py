@@ -1,7 +1,6 @@
 # import datetime
 from datetime import date
 from typing import Annotated
-from sqlalchemy import JSON
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -29,16 +28,15 @@ class MoexBonds(Base):
     facevalue: Mapped[float | None]
     isqualifiedinvestors: Mapped[int | None]
     amortizations: Mapped[bool]
+    floater: Mapped[bool]
     couponfrequency: Mapped[int | None]
     coupondate: Mapped[date | None]
     couponpercent: Mapped[float | None]
     couponvalue: Mapped[float | None]
-    sum_coupon: Mapped[float | None]
+    sumcoupon: Mapped[float | None]
     highrisk: Mapped[int | None]
-    group: Mapped[str | None]
     type: Mapped[str | None]
     price: Mapped[float | None]
     accint: Mapped[float | None]
     effectiveyield: Mapped[float | None]
-    year_percent: Mapped[float | None]
-    profit: Mapped[dict] = mapped_column(type_=JSON)
+    yearpercent: Mapped[float | None]

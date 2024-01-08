@@ -3,7 +3,7 @@ from routers import BondList, Bond, ContextStrategy
 
 
 def get_info():
-    MoexORM.create_tables()
+    # MoexORM.create_tables()
     bond = Bond()
     bond_list = BondList()
     client = ContextStrategy(bond_list)
@@ -17,8 +17,7 @@ def get_info():
             bonds = [detail for i in list_bonds
                      if (detail := client.execute_strategy(secid=i))]
 
-            # MoexORM.update_data(bonds=bonds)
-            MoexORM.insert_data(bonds=bonds)
+            MoexORM.update_data(bonds=bonds)
         except StopIteration:
             break
 

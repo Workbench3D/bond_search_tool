@@ -1,4 +1,3 @@
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -31,8 +30,31 @@ class MoexORM:
     def update_data(bonds: list):
         moex_bond = [MoexBonds(**i) for i in bonds]
         with session_factory() as session:
-            try:
-                session.bulk_save_objects(moex_bond)
-            except IntegrityError:
-                for bond in moex_bond:
-                    session.merge(bond)
+            for bond in moex_bond:
+                existing_record = (session.query(MoexBonds)
+                                   .filter(MoexBonds.secid == bond.secid)
+                                   .first())
+
+                if existing_record:
+                    # Если запись найдена, обновляем ее
+                    fields_to_update = ['listlevel',
+                                        'daystoredemption',
+                                        'facevalue',
+                                        'coupondate',
+                                        'couponpercent',
+                                        'couponvalue',
+                                        'sumcoupon',
+                                        'highrisk',
+                                        'price',
+                                        'accint',
+                                        'effectiveyield',
+                                        'yearpercent']
+
+                    for field in fields_to_update:
+                        setattr(existing_record, field, getattr(bond, field))
+
+                    session.commit()
+                else:
+                    # Если запись не найдена, создаем новую запись
+                    session.add(bond)
+                    session.commit()

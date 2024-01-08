@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import requests
 
@@ -132,7 +132,6 @@ class Bond(MoexStrategy):
                 'couponpercent': float,
                 'couponvalue': float,
                 'highrisk': int,
-                'group': str,
                 'type': str}
 
             # Создание словаря с информацией об облигации с необходимыми
@@ -173,23 +172,16 @@ class Bond(MoexStrategy):
     def _get_moex_yield(self, bond: dict) -> dict:
         '''Получение доходности, цены и НКД'''
 
-        # Определение временного интервала для запроса истории доходности
-        date_now = datetime.now()
-        delta_date = date_now - timedelta(days=7)
-        till_date = datetime.strftime(date_now, '%Y-%m-%d')
-        from_date = datetime.strftime(delta_date, '%Y-%m-%d')
-
         secid = bond.get('secid')
 
         # Формирование URL для запроса истории доходности
-        method_url = f'/iss/history/engines/stock/markets/bonds/yields/{secid}\
-            .json'
+        method_url = f'/iss/engines/stock/markets/bonds/securities/{secid}.json'
         params = {
             'iss.meta': 'off',
-            'sort_order': 'desc',
-            'from': from_date,
-            'till': till_date,
-            'limit': 1
+            'iss.only': 'securities, marketdata',
+            'marketdata.columns': 'LAST, YIELD',
+            'securities.columns': 'ACCRUEDINT',
+            'marketprice_board': 1
         }
 
         try:
@@ -198,20 +190,24 @@ class Bond(MoexStrategy):
             response = self.session.get(url=url, params=params).json()
 
             # Извлечение данных о доходности
-            history_yields = response.get('history_yields')
-            data = history_yields.get('data')[0]
-            columns = history_yields.get('columns')
+            accint_index = 0
+            price_index = 0
+            yield_index = 1
+            securities = response.get('securities').get('data')[0]
+            marketdata = response.get('marketdata').get('data')[0]
+            accint = securities[accint_index]
+            price = marketdata[price_index]
+            effectiveyield = marketdata[yield_index]
 
             # Выбор необходимых параметров
             # (цена, накопленный купон, эффективная доходность)
-            price_params = ['price', 'accint', 'effectiveyield']
-            bond_info = {param: data[columns.index(param.upper())]
-                         for param in price_params}
+            bond_info = {'price': price,
+                         'accint': accint,
+                         'effectiveyield': effectiveyield}
 
-            bond_info = bond_info | self._get_amortization(secid=secid)
-            bond = bond | bond_info
-            bond = bond_info | self._calc_bond(bond_info=bond)
-
+            bond_info |= self._get_amortization(secid=secid)
+            bond |= bond_info
+            bond |= self._calc_bond(bond_info=bond)
             return bond
 
         except requests.exceptions.RequestException as e:
@@ -219,8 +215,10 @@ class Bond(MoexStrategy):
             self.log.info(
                 f'Ошибка при получении доходности MOEX для {secid}: {e}')
             return {}
-        except (IndexError, TypeError):
+        except (IndexError, TypeError) as e:
             # Обработка ошибок при обработке данных
+            self.log.info(
+                f'Ошибка при MOEX для {secid}: {e}')
             return {}
 
     def _get_amortization(self, secid: str) -> dict:
@@ -228,29 +226,35 @@ class Bond(MoexStrategy):
         method_url = f'/iss/securities/{secid}/bondization.json'
         params = {
             'iss.meta': 'off',
+            'iss.only': 'amortizations,coupons',
+            'amortizations.columns': 'facevalue',
+            'coupons.columns': 'coupondate,value',
             'limit': 'unlimited'
         }
         url = f'{self._API_MOEX_URL}{method_url}'
         response = self.session.get(url=url, params=params).json()
         amortizations = len(response.get('amortizations').get('data')) > 1
+        coupons = response.get('coupons')
+        columns = coupons.get('columns')
+        coupondate_index = columns.index('coupondate')
+        value_index = columns.index('value')
 
         sum_coupon = 0
-        dict_coupon = {}
-        for i in response.get('coupons').get('data'):
-            date = datetime.strptime(i[3], '%Y-%m-%d')
+        floater = False
+        for i in coupons.get('data'):
+            date = datetime.strptime(i[coupondate_index], '%Y-%m-%d')
             delta = date - date_now
             if delta.days > 0:
-                coupon = i[9]
+                coupon = i[value_index]
                 if coupon is None:
+                    floater = True
                     coupon = 0
                 sum_coupon += coupon
-                dict_coupon[i[3]] = sum_coupon
         sum_coupon = round(sum_coupon, 2)
-        for key, value in dict_coupon.items():
-            dict_coupon[key] = round(sum_coupon+1000-value, 2)
+
         return {'amortizations': amortizations,
-                'sum_coupon': sum_coupon,
-                'profit': dict_coupon}
+                'floater': floater,
+                'sumcoupon': sum_coupon}
 
     def _calc_bond(self,
                    bond_info: dict,
@@ -267,7 +271,7 @@ class Bond(MoexStrategy):
         # coupon_frequency = bond_info.get('couponfrequency')
         days_to_redemption = bond_info.get('daystoredemption')
         # coupon_value = coupon_sum
-        coupon_sum = bond_info.get('sum_coupon')
+        coupon_sum = bond_info.get('sumcoupon')
 
         # Расчет цены покупки
         buy_price = face_value * price / 100 + accint
@@ -279,9 +283,6 @@ class Bond(MoexStrategy):
         sold_tax = max(0, sold_delta * tax / 100)
 
         # Расчет купонного дохода и налога на купоны
-        # coupon_day = year // coupon_frequency
-        # coupon_num = days_to_redemption // coupon_day + 1
-        # coupon_sum = coupon_num * coupon_value
         coupon_tax = coupon_sum * tax / 100
 
         # Расчет общего дохода и процента годовой доходности
@@ -291,7 +292,7 @@ class Bond(MoexStrategy):
         year_percent = round(day_percent * year, 2)
 
         # Добавление информации о годовой доходности в информацию об облигации
-        bond_info = bond_info | {'year_percent': year_percent}
+        bond_info = bond_info | {'yearpercent': year_percent}
 
         return bond_info
 
