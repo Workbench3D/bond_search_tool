@@ -1,7 +1,7 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from model import Base, MoexBonds
+from api.model import Base, MoexBonds
 
 
 engine = create_engine(
@@ -32,7 +32,7 @@ class MoexORM:
         with session_factory() as session:
             for bond in moex_bond:
                 existing_record = (session.query(MoexBonds)
-                                   .filter(MoexBonds.secid == bond.secid)
+                                   .filter(MoexBonds.secid == MoexBonds.secid)
                                    .first())
 
                 if existing_record:
@@ -58,3 +58,23 @@ class MoexORM:
                     # Если запись не найдена, создаем новую запись
                     session.add(bond)
                     session.commit()
+
+    @staticmethod
+    def select_bonds(fields: list,
+                     limit: int = 100) -> list:
+        with session_factory() as session:
+            selected_fields = [getattr(MoexBonds, field)
+                               for field in fields]
+            query = select(*selected_fields)
+            query = query.filter(MoexBonds.highrisk.is_(None),
+                                 MoexBonds.daystoredemption > 200,
+                                 MoexBonds.yearpercent < 20,
+                                 MoexBonds.amortizations.is_(False),
+                                 MoexBonds.floater.is_(False),
+                                 MoexBonds.sumcoupon > 5)
+            query = query.order_by(MoexBonds.yearpercent.desc())
+            if limit:
+                query = query.limit(limit)
+            result = session.execute(query).all()
+
+        return result

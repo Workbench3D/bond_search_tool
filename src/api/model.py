@@ -1,4 +1,3 @@
-# import datetime
 from datetime import date
 from typing import Annotated
 from sqlalchemy.orm import DeclarativeBase

@@ -7,7 +7,7 @@ import requests
 class MoexStrategy(ABC):
     '''Общий интерфейс работы с API Московской биржи'''
 
-    _API_MOEX_URL = 'https://iss.moex.com'
+    _API_MOEX_URL: str = 'https://iss.moex.com'
 
     @abstractmethod
     def process_data(self):
@@ -68,8 +68,6 @@ class BondList(MoexStrategy):
         if not securities_info:
             return []
 
-        # columns = securities_info.get('columns')
-        # secid_index = columns.index('secid')
         data = securities_info.get('data')
 
         traded_bonds = [bond[0] for bond in data]
@@ -93,11 +91,16 @@ class Bond(MoexStrategy):
     def _get_detail_bond(self, secid: str) -> dict:
         '''Получение общей детальной информации по облигации'''
 
+        name_index: int = 0
+        value_index: int = 1
+        desc_column = ('name', 'value')
+
         # Формирование URL для запроса информации об облигации
         method_url = f'/iss/securities/{secid}.json'
         params = {
             'iss.meta': 'off',
-            'description.columns': 'name, value',
+            'description.columns':
+                f'{desc_column[name_index]}, {desc_column[value_index]}',
             'iss.only': 'description'
         }
 
@@ -109,10 +112,6 @@ class Bond(MoexStrategy):
             # Извлечение необходимых данных из ответа
             description = response.get('description')
             data = description.get('data')
-            columns = description.get('columns')
-
-            value_index = columns.index('value')
-            name_index = columns.index('name')
 
             # Словарь с необходимыми ключами и требуемыми типами данных
             # для преобразования
@@ -173,14 +172,20 @@ class Bond(MoexStrategy):
         '''Получение доходности, цены и НКД'''
 
         secid = bond.get('secid')
+        accint_index: int = 0
+        price_index: int = 0
+        yield_index: int = 1
+        market_column = ('LAST', 'YIELD')
+        secur_column = ('ACCRUEDINT')
 
         # Формирование URL для запроса истории доходности
         method_url = f'/iss/engines/stock/markets/bonds/securities/{secid}.json'
         params = {
             'iss.meta': 'off',
             'iss.only': 'securities, marketdata',
-            'marketdata.columns': 'LAST, YIELD',
-            'securities.columns': 'ACCRUEDINT',
+            'marketdata.columns':
+                f'{market_column[price_index]}, {market_column[yield_index]}',
+            'securities.columns': f'{secur_column[accint_index]}',
             'marketprice_board': 1
         }
 
@@ -190,9 +195,6 @@ class Bond(MoexStrategy):
             response = self.session.get(url=url, params=params).json()
 
             # Извлечение данных о доходности
-            accint_index = 0
-            price_index = 0
-            yield_index = 1
             securities = response.get('securities').get('data')[0]
             marketdata = response.get('marketdata').get('data')[0]
             accint = securities[accint_index]
@@ -222,22 +224,24 @@ class Bond(MoexStrategy):
             return {}
 
     def _get_amortization(self, secid: str) -> dict:
+        coupondate_index: int = 0
+        value_index: int = 1
+        coupon_column = ('coupondate', 'value')
+
         date_now = datetime.now()
         method_url = f'/iss/securities/{secid}/bondization.json'
         params = {
             'iss.meta': 'off',
             'iss.only': 'amortizations,coupons',
             'amortizations.columns': 'facevalue',
-            'coupons.columns': 'coupondate,value',
+            'coupons.columns':
+            f'{coupon_column[coupondate_index]},{coupon_column[value_index]}',
             'limit': 'unlimited'
         }
         url = f'{self._API_MOEX_URL}{method_url}'
         response = self.session.get(url=url, params=params).json()
         amortizations = len(response.get('amortizations').get('data')) > 1
         coupons = response.get('coupons')
-        columns = coupons.get('columns')
-        coupondate_index = columns.index('coupondate')
-        value_index = columns.index('value')
 
         sum_coupon = 0
         floater = False
