@@ -39,3 +39,11 @@ class MoexBonds(Base):
     accint: Mapped[float | None]
     effectiveyield: Mapped[float | None]
     yearpercent: Mapped[float | None]
+
+    # def to_read_model(self) -> TaskSchema:
+    #     return TaskSchema(
+    #         id=self.id,
+    #         title=self.title,
+    #         author_id=self.author_id,
+    #         assignee_id=self.assignee_id,
+    #     )
