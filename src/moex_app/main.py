@@ -4,8 +4,8 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 sys.path.insert(0, parent_dir_path)
 
-from repository.bond import MoexORM
-from service.moex import Bond, BondList, ContextStrategy
+from repositories.bond import MoexORM
+from services.moex import Bond, BondList, ContextStrategy
 
 
 def get_info():
@@ -29,3 +29,4 @@ def get_info():
 
 if __name__ == '__main__':
     get_info()
+    # MoexORM.create_tables()

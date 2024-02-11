@@ -23,7 +23,7 @@ async def root():
 
 
 @app.get('/bonds')
-async def get_bonds(fastapi_service: Annotated[dict, Depends(fastapi_service)]) -> dict:
+async def get_bonds(fastapi_service: Annotated[dict, Depends(fastapi_service)]):
     return fastapi_service
 
 
