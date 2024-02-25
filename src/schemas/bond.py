@@ -56,25 +56,32 @@ class PrimaryDataModel(BaseModel):
     emitter_id: str = Field(alias='EMITTER_ID')
 
 
-class YieldDataModel(BaseModel):
+class YieldRawDataModel(BaseModel):
     accint: float = Field(alias='ACCRUEDINT')
     last_price: float | None = Field(alias='LAST')
-    last_day_price: float | None = Field(alias='MARKETPRICE')
+    # last_day_price: float | None = Field(alias='MARKETPRICE')
+    marketprice: float | None = Field(alias='MARKETPRICE')
     moex_yield: float = Field(alias='YIELD')
 
     @field_validator('last_price')
     def validate_last_price(cls, v):
-        if v is None:
+        if not v:
             v = 0
             return v
         return v
 
-    @field_validator('last_day_price')
-    def validate_last_day_price(cls, v):
-        if v is None:
+    @field_validator('marketprice')
+    def validate_marketprice(cls, v):
+        if not v:
             v = 0
             return v
         return v
+
+
+class YieldDataModel(BaseModel):
+    accint: float
+    price: float
+    moex_yield: float
 
 
 class CouponDataModel(BaseModel):

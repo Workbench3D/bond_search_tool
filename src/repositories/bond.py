@@ -1,6 +1,5 @@
+# TODO Добавление динамических фильтров к запросу по образцу
 from abc import ABC, abstractmethod
-
-from sqlalchemy import select
 
 from database.base import session_factory, engine
 from models.bond import MoexBonds, Base
@@ -69,7 +68,7 @@ class MoexORM(AbstractRepository):
                     session.commit()
 
     @staticmethod
-    def select_bonds(fields: list, limit: int = 100) -> list:
+    def select_bonds(fields: list, limit: int = 100):
         with session_factory() as session:
 
             query = session.query()
@@ -91,7 +90,6 @@ class MoexORM(AbstractRepository):
         result = ColumnGroupModel(columns=fields,
                                   data=[list(i) for i in query])
 
-    # TODO Добавление динамических фильтров к запросу по образцу
     # for column_name, filter_data in dynamic_filters.items():
     #     operator = filter_data['operator']
     #     value = filter_data['value']
