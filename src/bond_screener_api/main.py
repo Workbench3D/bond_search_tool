@@ -1,9 +1,3 @@
-import os
-import sys
-dir_path = os.path.dirname(os.path.realpath(__file__))
-parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
-sys.path.insert(0, parent_dir_path)
-
 from typing import Annotated
 from fastapi import FastAPI, Depends
 import uvicorn
@@ -30,7 +24,7 @@ async def get_bonds(
 
 if __name__ == '__main__':
     uvicorn.run('main:app',
-                host='127.0.0.1',
+                host='0.0.0.0',
                 port=8000,
                 reload=True,
                 workers=3)

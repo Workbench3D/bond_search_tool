@@ -1,0 +1,14 @@
+# uvicorn
+uvicorn==0.27.1
+
+# fastapi
+fastapi==0.109.2
+
+# pydantic
+pydantic==2.6.1
+
+# driver DB
+psycopg==3.1.18
+
+# SQLAlchemy
+SQLAlchemy==2.0.27

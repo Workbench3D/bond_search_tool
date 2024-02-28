@@ -1,0 +1,11 @@
+# aiohttp
+aiohttp==3.9.3
+
+# pydantic
+pydantic==2.6.1
+
+# driver DB
+psycopg==3.1.18
+
+# SQLAlchemy
+SQLAlchemy==2.0.27

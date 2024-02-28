@@ -1,0 +1,33 @@
+# Сборка 3-х контейнеров, БД, сборщик облигаций, FastAPI
+version: "3.8"
+
+services:
+  db:
+    image: postgres:14.7-alpine
+    container_name: db_posgresql
+    env_file: .env
+    # внутри используется порт 5432 а пробрасывается на порт 5433
+    ports:
+      - "5433:5432"
+    volumes:
+      - /home/user/Project/data:/var/lib/postgresql/data
+  moex_app:
+    build:
+      context: .
+      dockerfile: src/moex_app/Dockerfile
+    container_name: moex_app
+    command: python3 src/moex_app/main.py
+    env_file: .env
+    depends_on:
+      - db
+  fast_app:
+    build:
+      context: .
+      dockerfile: src/bond_screener_api/Dockerfile
+    container_name: fast_app
+    command: python3 src/bond_screener_api/main.py
+    env_file: .env
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
