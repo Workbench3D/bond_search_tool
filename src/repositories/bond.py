@@ -1,8 +1,8 @@
 # TODO Добавление динамических фильтров к запросу по образцу
 from abc import ABC, abstractmethod
 
-from database.base import session_factory, engine
-from models.bond import MoexBonds, Base
+from database.base import session_factory
+from models.bond import MoexBonds
 from schemas.bond import ColumnGroupModel
 
 
@@ -21,12 +21,7 @@ class AbstractRepository(ABC):
 
 
 class MoexORM(AbstractRepository):
-    ''''''
-    @staticmethod
-    def create_tables():
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
-
+    '''Класс работы с таблицей bonds'''
     @staticmethod
     def insert_data(bonds: list):
         with session_factory() as session:

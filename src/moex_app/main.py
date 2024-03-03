@@ -10,5 +10,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    # MoexORM.create_tables()
     asyncio.run(main())
