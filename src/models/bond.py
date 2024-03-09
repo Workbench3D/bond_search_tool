@@ -1,5 +1,4 @@
-from datetime import date
-import datetime
+from datetime import datetime, date
 from typing import Annotated
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeBase
@@ -38,7 +37,8 @@ class MoexBonds(Base):
     floater: Mapped[bool]
     sum_coupon: Mapped[float]
     year_percent: Mapped[float]
-    updated: Mapped[datetime.datetime] = mapped_column(
+    last_updated: Mapped[datetime] = mapped_column(
+        onupdate=text("TIMEZONE('utc', now())"),
         server_default=text("TIMEZONE('utc', now())"))
 
     # def to_read_model(self) -> TaskSchema:

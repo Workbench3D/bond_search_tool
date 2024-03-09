@@ -29,7 +29,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 user = os.getenv('POSTGRES_USER', default='admin')
-password = os.getenv('POSTGRES_PASS', default='password')
+password = os.getenv('POSTGRES_PASSWORD', default='password')
 host = os.getenv('POSTGRES_HOST', default='localhost')
 name = os.getenv('POSTGRES_DB', default='moex')
 
