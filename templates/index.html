@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Таблица данных</title>
+</head>
+<body>
+    <a href="https://github.com/Workbench3D/bond_search_tool">GitHub проекта</a>
+    <p>Сервис подбора выгодных облигаций</p>
+    <h4>Отобранные облигаций</h4>
+    <table border="1">
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 60%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+        <tr>
+            {% for column in columns %}
+                <th>{{ column }}</th>
+            {% endfor %}
+        </tr>
+        {% for row in data %}
+        <tr>
+            {% for value in row %}
+                <td>{{ value }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
