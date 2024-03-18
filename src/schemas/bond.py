@@ -26,51 +26,51 @@ class CouponRequestModel(BaseModel):
 
 
 class PrimaryDataModel(BaseModel):
-    short_name: str = Field(alias='SHORTNAME')
-    secid: str = Field(alias='SECID')
-    isin: str = Field(alias='ISIN')
-    matdate: date = Field(alias='MATDATE', default=date(2000, 1, 1))
-    initial_face_value: int = Field(alias='INITIALFACEVALUE')
-    face_unit: str = Field(alias='FACEUNIT')
-    list_level: int = Field(alias='LISTLEVEL')
-    days_to_redemption: int = Field(alias='DAYSTOREDEMPTION', default=0)
-    face_value: float = Field(alias='FACEVALUE')
-    is_qualified_investors: bool = Field(alias='ISQUALIFIEDINVESTORS')
-    coupon_frequency: int = Field(alias='COUPONFREQUENCY', default=0)
-    coupon_date: date = Field(alias='COUPONDATE', default=date(2000, 1, 1))
-    coupon_percent: float = Field(alias='COUPONPERCENT', default=0.0)
-    coupon_value: float = Field(alias='COUPONVALUE', default=0.0)
-    high_risk: bool = Field(alias='HIGHRISK', default=False)
-    type: str = Field(alias='TYPE')
-    name: str = Field(alias='NAME')
-    reg_number: str = Field(alias='REGNUMBER', default='None')
-    issue_date: str = Field(alias='ISSUEDATE')
-    lat_name: str = Field(alias='LATNAME')
-    start_date: str = Field(alias='STARTDATEMOEX', default=date(2000, 1, 1))
-    registry_number: str = Field(alias='PROGRAMREGISTRYNUMBER', default='')
-    earlyre_payment: str = Field(alias='EARLYREPAYMENT', default='')
-    issue_size: str = Field(alias='ISSUESIZE')
-    type_name: str = Field(alias='TYPENAME')
-    group: str = Field(alias='GROUP')
-    group_name: str = Field(alias='GROUPNAME')
-    emitter_id: str = Field(alias='EMITTER_ID')
+    short_name: str = Field(alias="SHORTNAME")
+    secid: str = Field(alias="SECID")
+    isin: str = Field(alias="ISIN")
+    matdate: date = Field(alias="MATDATE", default=date(2000, 1, 1))
+    initial_face_value: int = Field(alias="INITIALFACEVALUE")
+    face_unit: str = Field(alias="FACEUNIT")
+    list_level: int = Field(alias="LISTLEVEL")
+    days_to_redemption: int = Field(alias="DAYSTOREDEMPTION", default=0)
+    face_value: float = Field(alias="FACEVALUE")
+    is_qualified_investors: bool = Field(alias="ISQUALIFIEDINVESTORS")
+    coupon_frequency: int = Field(alias="COUPONFREQUENCY", default=0)
+    coupon_date: date = Field(alias="COUPONDATE", default=date(2000, 1, 1))
+    coupon_percent: float = Field(alias="COUPONPERCENT", default=0.0)
+    coupon_value: float = Field(alias="COUPONVALUE", default=0.0)
+    high_risk: bool = Field(alias="HIGHRISK", default=False)
+    type: str = Field(alias="TYPE")
+    name: str = Field(alias="NAME")
+    reg_number: str = Field(alias="REGNUMBER", default="None")
+    issue_date: str = Field(alias="ISSUEDATE")
+    lat_name: str = Field(alias="LATNAME")
+    start_date: str = Field(alias="STARTDATEMOEX", default=date(2000, 1, 1))
+    registry_number: str = Field(alias="PROGRAMREGISTRYNUMBER", default="")
+    earlyre_payment: str = Field(alias="EARLYREPAYMENT", default="")
+    issue_size: str = Field(alias="ISSUESIZE")
+    type_name: str = Field(alias="TYPENAME")
+    group: str = Field(alias="GROUP")
+    group_name: str = Field(alias="GROUPNAME")
+    emitter_id: str = Field(alias="EMITTER_ID")
 
 
 class YieldRawDataModel(BaseModel):
-    accint: float = Field(alias='ACCRUEDINT')
-    last_price: float | None = Field(alias='LAST')
+    accint: float = Field(alias="ACCRUEDINT")
+    last_price: float | None = Field(alias="LAST")
     # last_day_price: float | None = Field(alias='MARKETPRICE')
-    marketprice: float | None = Field(alias='MARKETPRICE')
-    moex_yield: float = Field(alias='YIELD')
+    marketprice: float | None = Field(alias="MARKETPRICE")
+    moex_yield: float = Field(alias="YIELD")
 
-    @field_validator('last_price')
+    @field_validator("last_price")
     def validate_last_price(cls, v):
         if not v:
             v = 0
             return v
         return v
 
-    @field_validator('marketprice')
+    @field_validator("marketprice")
     def validate_marketprice(cls, v):
         if not v:
             v = 0

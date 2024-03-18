@@ -16,5 +16,5 @@ def main():
     asyncio.run(update_task())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

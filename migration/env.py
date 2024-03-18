@@ -28,12 +28,12 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-user = os.getenv('POSTGRES_USER', default='admin')
-password = os.getenv('POSTGRES_PASSWORD', default='password')
-host = os.getenv('POSTGRES_HOST', default='localhost')
-name = os.getenv('POSTGRES_DB', default='moex')
+user = os.getenv("POSTGRES_USER", default="admin")
+password = os.getenv("POSTGRES_PASSWORD", default="password")
+host = os.getenv("POSTGRES_HOST", default="localhost")
+name = os.getenv("POSTGRES_DB", default="moex")
 
-url_db = f'postgresql+psycopg://{user}:{password}@{host}/{name}'
+url_db = f"postgresql+psycopg://{user}:{password}@{host}/{name}"
 
 
 def run_migrations_offline() -> None:
@@ -68,7 +68,7 @@ def run_migrations_online() -> None:
 
     """
     section = config.config_ini_section
-    config.set_section_option(section, 'sqlalchemy.url', url_db)
+    config.set_section_option(section, "sqlalchemy.url", url_db)
     # можно просто так указать и закоментить в alembic.ini
     # config.set_main_option('sqlalchemy.url', url_db)
     connectable = engine_from_config(
@@ -78,9 +78,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

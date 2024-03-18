@@ -14,7 +14,7 @@ class Base(DeclarativeBase):
 
 
 class MoexBonds(Base):
-    __tablename__ = 'bonds'
+    __tablename__ = "bonds"
 
     id: Mapped[intpk]
     shortname: Mapped[str]
@@ -39,7 +39,8 @@ class MoexBonds(Base):
     year_percent: Mapped[float]
     last_updated: Mapped[datetime] = mapped_column(
         onupdate=text("TIMEZONE('utc', now())"),
-        server_default=text("TIMEZONE('utc', now())"))
+        server_default=text("TIMEZONE('utc', now())"),
+    )
 
     # def to_read_model(self) -> TaskSchema:
     #     return TaskSchema(

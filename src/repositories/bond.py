@@ -21,7 +21,8 @@ class AbstractRepository(ABC):
 
 
 class MoexORM(AbstractRepository):
-    '''Класс работы с таблицей bonds'''
+    """Класс работы с таблицей bonds"""
+
     @staticmethod
     def insert_data(bonds: list):
         with session_factory() as session:
@@ -34,24 +35,28 @@ class MoexORM(AbstractRepository):
         moex_bond = [MoexBonds(**i) for i in bonds]
         with session_factory() as session:
             for bond in moex_bond:
-                existing_record = (session.query(MoexBonds)
-                                   .filter(MoexBonds.secid == bond.secid)
-                                   .first())
+                existing_record = (
+                    session.query(MoexBonds)
+                    .filter(MoexBonds.secid == bond.secid)
+                    .first()
+                )
 
                 if existing_record:
                     # Если запись найдена, обновляем ее
-                    fields_to_update = ['list_level',
-                                        'days_to_redemption',
-                                        'face_value',
-                                        'coupon_date',
-                                        'coupon_percent',
-                                        'coupon_value',
-                                        'sum_coupon',
-                                        'highrisk',
-                                        'price',
-                                        'accint',
-                                        'moex_yield',
-                                        'year_percent']
+                    fields_to_update = [
+                        "list_level",
+                        "days_to_redemption",
+                        "face_value",
+                        "coupon_date",
+                        "coupon_percent",
+                        "coupon_value",
+                        "sum_coupon",
+                        "highrisk",
+                        "price",
+                        "accint",
+                        "moex_yield",
+                        "year_percent",
+                    ]
 
                     for field in fields_to_update:
                         setattr(existing_record, field, getattr(bond, field))
@@ -65,41 +70,42 @@ class MoexORM(AbstractRepository):
     @staticmethod
     def select_bonds(fields: list, limit: int = 50):
         with session_factory() as session:
-
             query = session.query()
 
             for column_name in fields:
                 query = query.add_columns(getattr(MoexBonds, column_name))
 
             query = (
-                query
-                .filter(MoexBonds.year_percent.between(5, 20),
-                        MoexBonds.highrisk.is_(False),
-                        MoexBonds.amortizations.is_(False),
-                        MoexBonds.floater.is_(False),
-                        MoexBonds.sum_coupon > 10,
-                        MoexBonds.days_to_redemption.between(500, 1500))
+                query.filter(
+                    MoexBonds.year_percent.between(5, 20),
+                    MoexBonds.highrisk.is_(False),
+                    MoexBonds.amortizations.is_(False),
+                    MoexBonds.floater.is_(False),
+                    MoexBonds.sum_coupon > 10,
+                    MoexBonds.days_to_redemption.between(500, 1500),
+                )
                 .order_by(MoexBonds.year_percent.desc())
-                .limit(limit).all())
+                .limit(limit)
+                .all()
+            )
 
-        result = ColumnGroupModel(columns=fields,
-                                  data=[list(i) for i in query])
+        result = ColumnGroupModel(columns=fields, data=[list(i) for i in query])
 
-    # for column_name, filter_data in dynamic_filters.items():
-    #     operator = filter_data['operator']
-    #     value = filter_data['value']
+        # for column_name, filter_data in dynamic_filters.items():
+        #     operator = filter_data['operator']
+        #     value = filter_data['value']
 
-    #     column = getattr(YourModelClass, column_name)
+        #     column = getattr(YourModelClass, column_name)
 
-    #     if operator == '==':
-    #         query = query.filter(column == value)
-    #     elif operator == '>':
-    #         query = query.filter(column > value)
-    #     elif operator == '<':
-    #         query = query.filter(column < value)
-    #     elif operator == 'between':
-    #         query = query.filter(between(column, *value))
-    #     elif operator == 'is_':
-    #         query = query.filter(column.is_(value))
+        #     if operator == '==':
+        #         query = query.filter(column == value)
+        #     elif operator == '>':
+        #         query = query.filter(column > value)
+        #     elif operator == '<':
+        #         query = query.filter(column < value)
+        #     elif operator == 'between':
+        #         query = query.filter(between(column, *value))
+        #     elif operator == 'is_':
+        #         query = query.filter(column.is_(value))
 
         return result
