@@ -63,7 +63,7 @@ class MoexORM(AbstractRepository):
                     session.commit()
 
     @staticmethod
-    def select_bonds(fields: list, limit: int = 100):
+    def select_bonds(fields: list, limit: int = 50):
         with session_factory() as session:
 
             query = session.query()

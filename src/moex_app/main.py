@@ -11,7 +11,7 @@ async def update_task():
     await context.execute_strategy(update_data=update_data)
 
 
-@task_schedule(hour=9, minute=4)
+@task_schedule(hour=0, minute=0)
 def main():
     asyncio.run(update_task())
 
