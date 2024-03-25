@@ -31,35 +31,41 @@ class BondList(MoexStrategy):
 
     async def process_data(self):
         """Обработка данных для заданной страницы"""
-        async with aiohttp.ClientSession(trust_env=True) as session:
-            method_url = "/iss/securities.json"
-            url = f"{self._API_MOEX_URL}{method_url}"
-            page = 0
-            model_response = schema.BondListModel
-            while True:
-                # Вывод информации о текущей странице
-                self.log.info(f"Страница {page + 1}")
+        try:
+            async with aiohttp.ClientSession(trust_env=True) as session:
+                method_url = "/iss/securities.json"
+                url = f"{self._API_MOEX_URL}{method_url}"
+                page = 0
+                model_response = schema.BondListModel
+                while True:
+                    # Вывод информации о текущей странице
+                    self.log.info(f"Страница {page + 1}")
 
-                start = 100 * page
-                params = {
-                    "iss.meta": "off",
-                    "securities.columns": "secid",
-                    "engine": "stock",
-                    "market": "bonds",
-                    "is_trading": 1,
-                    "start": start,
-                }
-                page += 1
-                async with session.get(url=url, params=params) as response:
-                    response_bonds = await response.json()
-                    response = model_response.model_validate(response_bonds)
-                    bond_list = response.securities.data
+                    start = 100 * page
+                    params = {
+                        "iss.meta": "off",
+                        "securities.columns": "secid",
+                        "engine": "stock",
+                        "market": "bonds",
+                        "is_trading": 1,
+                        "start": start,
+                    }
+                    page += 1
+                    async with session.get(url=url, params=params) as response:
+                        response_bonds = await response.json()
+                        response = model_response.model_validate(response_bonds)
+                        bond_list = response.securities.data
 
-                    # Если список пустой, завершаем генерацию
-                    if not bond_list:
-                        return
-                    result = [i[0] for i in bond_list]
-                    yield result
+                        # Если список пустой, завершаем генерацию
+                        if not bond_list:
+                            return
+                        result = [i[0] for i in bond_list]
+                        yield result
+
+        except aiohttp.ClientError as e:
+            # Обработка ошибок при запросе
+            self.log.info(f"Ошибка при запросе сведений об списке облиг. для страницы {page + 1}: {e}")
+            yield []
 
 
 class Bond(MoexStrategy):
