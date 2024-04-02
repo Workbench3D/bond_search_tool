@@ -64,7 +64,9 @@ class BondList(MoexStrategy):
 
         except aiohttp.ClientError as e:
             # Обработка ошибок при запросе
-            self.log.info(f"Ошибка при запросе сведений об списке облиг. для страницы {page + 1}: {e}")
+            self.log.info(
+                f"Ошибка при запросе сведений об списке облиг. для страницы {page + 1}: {e}"
+            )
             yield []
 
 
