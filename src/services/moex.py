@@ -159,7 +159,7 @@ class Bond(MoexStrategy):
                 response_bond = await response.json()
                 response = model_response.model_validate(response_bond)
                 desc = response.description
-                desc = {i[0]: i[1] for i in desc.data}
+                desc = {key: value for key, value in desc.data}
                 bond_info = model_data.model_validate(desc)
 
                 # Проверка на квалификацию инвестора
@@ -204,13 +204,10 @@ class Bond(MoexStrategy):
                 response = model_response.model_validate(response_bond)
 
                 securities = response.securities
-                securities = {securities.columns[0]: securities.data[0][0]}
+                securities = dict(zip(securities.columns, securities.data[0]))
 
                 marketdata = response.marketdata
-                marketdata = {
-                    marketdata.columns[i]: marketdata.data[0][i]
-                    for i in range(len(marketdata.columns))
-                }
+                marketdata = dict(zip(marketdata.columns, marketdata.data[0]))
 
                 raw_yield = securities | marketdata
                 raw_yield = raw_model_data.model_validate(raw_yield)
@@ -266,7 +263,8 @@ class Bond(MoexStrategy):
                 floater = False
                 coupons = response.coupons
                 coupons = {
-                    datetime.strptime(i[0], "%Y-%m-%d"): i[1] for i in coupons.data
+                    datetime.strptime(key, "%Y-%m-%d"): value
+                    for key, value in coupons.data
                 }
                 for key, value in coupons.items():
                     delta = key - date_now
