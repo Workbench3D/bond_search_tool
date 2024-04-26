@@ -27,6 +27,8 @@ def fastapi_service(
             "price",
             "sum_coupon",
             "year_percent",
+            "coupon_value",
+            "type",
         ]
     else:
         fields_list = fields.split(",")

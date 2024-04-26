@@ -3,28 +3,62 @@
 <div class="container-xxl">
     <h3 class="">Отобранные облигаций</h3>
     <div class="row">
-        <div class="col-9">
-            <table class="table table-bordered w-auto small">
-                <thead class="table-light">
-                    <tr>
-                        {% for column in columns %}
-                        <th>{{ column }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody class="table-group-divider">
-                    {% for row in data %}
-                    <tr>
-                        {% for value in row %}
-                        <td>{{ value }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
         <div class="col-md-3">
-            {% include 'filter_form.html' %}
+            {% include 'dynamic_filter.html' %}
+        </div>
+        <div class="col-md-9">
+            <ul class="list-group">
+                {% for row in data %}
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-6" style="width: 50%">
+                            <h5 class="card-title small">{{row[0]}}</h5>
+                            <p class="card-text small"><a href="https://smart-lab.ru/q/bonds/{{row[1]}}">{{row[1]}}</a><br>
+                                Погашение: {{row[2]}}({{row[5]}})<br>
+                                {% if row[4] > 2 %}
+                                <span class="badge text-bg-danger">Ур. листинга: {{row[4]}}</span>
+                                {% else %}
+                                <span class="badge text-bg-success">Ур. листинга: {{row[4]}}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6" style="width: 50%">
+                            <h6 class="card-title small">{{(row[8]*row[6]/100)|round(2)}} 
+                                {% if row[3] == "USD" %}$
+                                {% elif row[3] == "KGS" %}Сом
+                                {% elif row[3] == "GBP" %}£
+                                {% elif row[3] == "CHF" %}Франк
+                                {% elif row[3] == "SUR" %}₽
+                                {% elif row[3] == "AED" %}Дирхам
+                                {% elif row[3] == "CNY" %}¥
+                                {% elif row[3] == "EUR" %}€
+                                {% endif %}
+                                 - {{row[10]}}%</h6>
+                            <p class="card-text small">
+                                Купон: {{row[11]}}<br>
+                                НКД:
+                                {% if row[7]/row[11]*100 > 50 %}
+                                <span class="badge text-bg-danger">{{row[7]}}</span>
+                                {% else %}
+                                <span class="badge text-bg-success">{{row[7]}}</span>
+                                {% endif %}
+                                <br>
+                                Сумма купонов: {{row[9]}}
+                                <br>
+                                Тип: 
+                                {% if row[12] == "ifi_bond" %}Облиг. МФО
+                                {% elif row[12] == "corporate_bond" %}Корпор. облиг.
+                                {% elif row[12] == "municipal_bond" %}Муницип. облиг.
+                                {% elif row[12] == "ofz_bond" %}Госуд. облиг.
+                                {% elif row[12] == "subfederal_bond" %}Регион. облиг.
+                                {% elif row[12] == "exchange_bond" %}Биржевая облиг.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
 </div>

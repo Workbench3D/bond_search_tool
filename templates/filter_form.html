@@ -1,49 +1,42 @@
-<div class="card">
-    <div class="card-header">
-        Фильтр
+<form action="/view_bonds" method="get">
+    <div>
+        <label for="inputMaxYearPercent">Макс. процент</label>
+        <input type="number" class="form-control" id="inputMaxYearPercent" name="max_year_percent" value="20">
     </div>
-    <div class="card-body">
-        <form action="/view_bonds" method="get">
-            <div>
-                <label for="inputMaxYearPercent">Макс. процент</label>
-                <input type="number" class="form-control" id="inputMaxYearPercent" name="max_year_percent" value="20">
-            </div>
-            <div>
-                <label for="inputMinYearPercent">Мин. процент</label>
-                <input type="number" class="form-control" id="inputMinYearPercent" name="min_year_percent" value="5">
-            </div>
-            <div>
-                <label for="inputMaxListLevel">Макс. уровень листинга</label>
-                <input type="number" class="form-control" id="inputMaxListLevel" name="max_list_level" value="3">
-            </div>
-            <div>
-                <label for="inputMinListLevel">Мин. уровень листинга</label>
-                <input type="number" class="form-control" id="inputMinListLevel" name="min_list_level" value="1">
-            </div>
-            <div>
-                <input type="checkbox" id="inputAmortizations" name="amortizations">
-                <label for="inputAmortizations">Амортизация</label>
-            </div>
-            <div>
-                <input type="checkbox" id="inputFloater" name="floater">
-                <label for="inputFloater">Плавающий купон</label>
-            </div>
-            <div>
-                <input type="checkbox" id="inputOfzBonds" name="ofz_bonds">
-                <label for="inputOfzBonds">ОФЗ</label>
-            </div>
-            <div>
-                <label for="inputMaxDaysToRedemption">Макс. число дней до погашения</label>
-                <input type="number" class="form-control" id="inputMaxDaysToRedemption" name="max_days_to_redemption" value="1500">
-            </div>
-            <div>
-                <label for="inputMinDaysToRedemption">Мин. число дней до погашения</label>
-                <input type="number" class="form-control" id="inputMinDaysToRedemption" name="min_days_to_redemption" value="500">
-            </div>
-            <div>
-                <button type="submit" class="btn btn-primary">Фильтр</button>
-                <button type="reset" class="btn btn-secondary ml-2">Сброс</button>
-            </div>
-        </form>
+    <div>
+        <label for="inputMinYearPercent">Мин. процент</label>
+        <input type="number" class="form-control" id="inputMinYearPercent" name="min_year_percent" value="5">
     </div>
-</div>
+    <div>
+        <label for="inputMaxListLevel">Макс. уровень листинга</label>
+        <input type="number" class="form-control" id="inputMaxListLevel" name="max_list_level" value="3">
+    </div>
+    <div>
+        <label for="inputMinListLevel">Мин. уровень листинга</label>
+        <input type="number" class="form-control" id="inputMinListLevel" name="min_list_level" value="1">
+    </div>
+    <div>
+        <input type="checkbox" id="inputAmortizations" name="amortizations">
+        <label for="inputAmortizations">Амортизация</label>
+    </div>
+    <div>
+        <input type="checkbox" id="inputFloater" name="floater">
+        <label for="inputFloater">Плавающий купон</label>
+    </div>
+    <div>
+        <input type="checkbox" id="inputOfzBonds" name="ofz_bonds">
+        <label for="inputOfzBonds">ОФЗ</label>
+    </div>
+    <div>
+        <label for="inputMaxDaysToRedemption">Макс. число дней до погашения</label>
+        <input type="number" class="form-control" id="inputMaxDaysToRedemption" name="max_days_to_redemption" value="1500">
+    </div>
+    <div>
+        <label for="inputMinDaysToRedemption">Мин. число дней до погашения</label>
+        <input type="number" class="form-control" id="inputMinDaysToRedemption" name="min_days_to_redemption" value="500">
+    </div>
+    <div>
+        <button type="submit" class="btn btn-primary">Фильтр</button>
+        <button type="reset" class="btn btn-secondary ml-2">Сброс</button>
+    </div>
+</form>
