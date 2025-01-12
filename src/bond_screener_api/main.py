@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Query, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from schemas.bond import ColumnGroupModel
@@ -29,11 +29,34 @@ async def get_bonds(fastapi_service: Annotated[dict, Depends(fastapi_service)]):
 async def get_view_bonds(
     request: Request,
     fastapi_service: Annotated[ColumnGroupModel, Depends(fastapi_service)],
+    max_year_percent: int = Query(20),
+    min_year_percent: int = Query(5),
+    max_list_level: int = Query(3),
+    min_list_level: int = Query(1),
+    amortizations: bool = Query(False),
+    floater: bool = Query(False),
+    ofz_bonds: bool = Query(False),
+    max_days_to_redemption: int = Query(1500),
+    min_days_to_redemption: int = Query(500),
 ):
     columns = fastapi_service.columns
     data = fastapi_service.data
     return templates.TemplateResponse(
-        request=request, name="index.html", context={"columns": columns, "data": data}
+        request=request,
+        name="index.html",
+        context={
+            "columns": columns,
+            "data": data,
+            "max_year_percent": max_year_percent,
+            "min_year_percent": min_year_percent,
+            "max_list_level": max_list_level,
+            "min_list_level": min_list_level,
+            "amortizations": amortizations,
+            "floater": floater,
+            "ofz_bonds": ofz_bonds,
+            "max_days_to_redemption": max_days_to_redemption,
+            "min_days_to_redemption": min_days_to_redemption,
+        },
     )
 
 
