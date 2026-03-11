@@ -35,11 +35,7 @@ class MoexORM(AbstractRepository):
         moex_bond = [MoexBonds(**i) for i in bonds]
         with session_factory() as session:
             for bond in moex_bond:
-                existing_record = (
-                    session.query(MoexBonds)
-                    .filter(MoexBonds.secid == bond.secid)
-                    .first()
-                )
+                existing_record = session.query(MoexBonds).filter(MoexBonds.secid == bond.secid).first()
 
                 if existing_record:
                     # Если запись найдена, обновляем ее
@@ -97,12 +93,7 @@ class MoexORM(AbstractRepository):
             if ofz_bonds:
                 query_filter.append(MoexBonds.type == "ofz_bond")
 
-            query = (
-                query.filter(*query_filter)
-                .order_by(MoexBonds.year_percent.desc())
-                .limit(limit)
-                .all()
-            )
+            query = query.filter(*query_filter).order_by(MoexBonds.year_percent.desc()).limit(limit).all()
 
         result = ColumnGroupModel(columns=fields, data=[list(i) for i in query])
 

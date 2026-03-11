@@ -2,15 +2,26 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from time import time
 import logging
-import aiohttp
+from aiohttp import ClientSession, ClientError
 
-from schemas import bond as schema
+from schemas.bond import (
+    BondListModel,
+    BondModel,
+    PrimaryDataModel,
+    PrimaryRequestModel,
+    YieldDataModel,
+    YieldRawDataModel,
+    YieldRequestModel,
+    CouponDataModel,
+    CouponRequestModel,
+)
 
 
 class MoexStrategy(ABC):
     """Общий интерфейс работы с API Московской биржи"""
 
     _API_MOEX_URL: str = "https://iss.moex.com"
+    headers = {"Accept-Encoding": "gzip"}
 
     @abstractmethod
     async def process_data(self):
@@ -32,11 +43,10 @@ class BondList(MoexStrategy):
     async def process_data(self):
         """Обработка данных для заданной страницы"""
         try:
-            async with aiohttp.ClientSession(trust_env=True) as session:
+            async with ClientSession(trust_env=True, headers=self.headers) as session:
                 method_url = "/iss/securities.json"
                 url = f"{self._API_MOEX_URL}{method_url}"
                 page = 0
-                model_response = schema.BondListModel
                 while True:
                     # Вывод информации о текущей странице
                     self.log.info(f"Страница {page + 1}")
@@ -53,7 +63,7 @@ class BondList(MoexStrategy):
                     page += 1
                     async with session.get(url=url, params=params) as response:
                         response_bonds = await response.json()
-                        response = model_response.model_validate(response_bonds)
+                        response = BondListModel.model_validate(response_bonds)
                         bond_list = response.securities.data
 
                         # Если список пустой, завершаем генерацию
@@ -62,11 +72,9 @@ class BondList(MoexStrategy):
                         result = [i[0] for i in bond_list]
                         yield result
 
-        except aiohttp.ClientError as e:
+        except ClientError as e:
             # Обработка ошибок при запросе
-            self.log.info(
-                f"Ошибка при запросе сведений об списке облиг. для страницы {page + 1}: {e}"
-            )
+            self.log.info(f"Ошибка при запросе сведений об списке облиг. для страницы {page + 1}: {e}")
             yield []
 
 
@@ -83,7 +91,7 @@ class Bond(MoexStrategy):
 
     async def process_data(self, list_bond: list) -> list:
         result = []
-        async with aiohttp.ClientSession(trust_env=True) as session:
+        async with ClientSession(trust_env=True, headers=self.headers) as session:
             for secid in list_bond:
                 bond_info = await self._get_detail_bond(session=session, secid=secid)
                 moex_yield = await self._get_moex_yield(session=session, secid=secid)
@@ -131,19 +139,15 @@ class Bond(MoexStrategy):
                     "year_percent": year_percent,
                 }
 
-                bond_data = schema.BondModel.model_validate(bond_data)
+                bond_data = BondModel.model_validate(bond_data)
                 bond_data = bond_data.model_dump()
                 result.append(bond_data)
 
         return result
 
-    async def _get_detail_bond(
-        self, session: aiohttp.ClientSession, secid: str
-    ) -> schema.PrimaryDataModel | None:
+    async def _get_detail_bond(self, session: ClientSession, secid: str) -> PrimaryDataModel | None:
         """Получение общей детальной информации по облигации"""
 
-        model_response = schema.PrimaryRequestModel
-        model_data = schema.PrimaryDataModel
         # Формирование URL для запроса информации об облигации
         method_url = f"/iss/securities/{secid}"
         params = {
@@ -155,12 +159,12 @@ class Bond(MoexStrategy):
         try:
             # Запрос информации об облигации
             url = f"{self._API_MOEX_URL}{method_url}.json"
-            async with session.get(url=url, params=params) as response:
+            async with session.get(url=url, params=params, headers=self.headers) as response:
                 response_bond = await response.json()
-                response = model_response.model_validate(response_bond)
+                response = PrimaryRequestModel.model_validate(response_bond)
                 desc = response.description
                 desc = {key: value for key, value in desc.data}
-                bond_info = model_data.model_validate(desc)
+                bond_info = PrimaryDataModel.model_validate(desc)
 
                 # Проверка на квалификацию инвестора
                 if bond_info.is_qualified_investors == 1:
@@ -168,7 +172,7 @@ class Bond(MoexStrategy):
 
                 return bond_info
 
-        except aiohttp.ClientError as e:
+        except ClientError as e:
             # Обработка ошибок при запросе
             self.log.info(f"Ошибка при запросе сведений об облиг. для {secid}: {e}")
             return None
@@ -177,14 +181,8 @@ class Bond(MoexStrategy):
             self.log.info(f"Ошибка при обработке сведений облиг. для {secid}: {e}")
             return None
 
-    async def _get_moex_yield(
-        self, session: aiohttp.ClientSession, secid: str
-    ) -> schema.YieldDataModel | None:
+    async def _get_moex_yield(self, session: ClientSession, secid: str) -> YieldDataModel | None:
         """Получение доходности, цены и НКД"""
-
-        model_response = schema.YieldRequestModel
-        raw_model_data = schema.YieldRawDataModel
-        model_data = schema.YieldDataModel
 
         # Формирование URL для запроса истории доходности
         method_url = f"/iss/engines/stock/markets/bonds/securities/{secid}"
@@ -199,9 +197,9 @@ class Bond(MoexStrategy):
         try:
             # Запрос истории доходности
             url = f"{self._API_MOEX_URL}{method_url}.json"
-            async with session.get(url=url, params=params) as response:
+            async with session.get(url=url, params=params, headers=self.headers) as response:
                 response_bond = await response.json()
-                response = model_response.model_validate(response_bond)
+                response = YieldRequestModel.model_validate(response_bond)
 
                 securities = response.securities
                 securities = dict(zip(securities.columns, securities.data[0]))
@@ -210,7 +208,7 @@ class Bond(MoexStrategy):
                 marketdata = dict(zip(marketdata.columns, marketdata.data[0]))
 
                 raw_yield = securities | marketdata
-                raw_yield = raw_model_data.model_validate(raw_yield)
+                raw_yield = YieldRawDataModel.model_validate(raw_yield)
                 price = raw_yield.last_price
                 if raw_yield.last_price == 0 and raw_yield.marketprice != 0:
                     price = raw_yield.marketprice
@@ -220,11 +218,11 @@ class Bond(MoexStrategy):
                     "moex_yield": raw_yield.moex_yield,
                 }
 
-                moex_yield = model_data.model_validate(moex_yield)
+                moex_yield = YieldDataModel.model_validate(moex_yield)
 
                 return moex_yield
 
-        except aiohttp.ClientError as e:
+        except ClientError as e:
             # Обработка ошибок при запросе
             self.log.info(f"Ошибка при запросе доходности MOEX для {secid}: {e}")
             return None
@@ -233,13 +231,9 @@ class Bond(MoexStrategy):
             self.log.info(f"Ошибка при обработке доходности MOEX для {secid}: {e}")
             return None
 
-    async def _get_amortization(
-        self, session: aiohttp.ClientSession, secid: str
-    ) -> schema.CouponDataModel | None:
+    async def _get_amortization(self, session: ClientSession, secid: str) -> CouponDataModel | None:
         """Получение значений амортизации, плавающего купона и суммы купонов"""
 
-        model_response = schema.CouponRequestModel
-        model_data = schema.CouponDataModel
 
         date_now = datetime.now()
         method_url = f"/iss/securities/{secid}/bondization"
@@ -252,20 +246,17 @@ class Bond(MoexStrategy):
         }
         try:
             url = f"{self._API_MOEX_URL}{method_url}.json"
-            async with session.get(url=url, params=params) as response:
+            async with session.get(url=url, params=params, headers=self.headers) as response:
                 response_bond = await response.json()
 
-                response = model_response.model_validate(response_bond)
+                response = CouponRequestModel.model_validate(response_bond)
 
                 amortizations = len(response.amortizations.data) > 1
 
                 sum_coupon = 0
                 floater = False
                 coupons = response.coupons
-                coupons = {
-                    datetime.strptime(key, "%Y-%m-%d"): value
-                    for key, value in coupons.data
-                }
+                coupons = {datetime.strptime(key, "%Y-%m-%d"): value for key, value in coupons.data}
                 for key, value in coupons.items():
                     delta = key - date_now
                     if delta.days > 0:
@@ -282,10 +273,10 @@ class Bond(MoexStrategy):
                     "sum_coupon": sum_coupon,
                 }
 
-                coupons = model_data.model_validate(coupons)
+                coupons = CouponDataModel.model_validate(coupons)
 
                 return coupons
-        except aiohttp.ClientError as e:
+        except ClientError as e:
             # Обработка ошибок при запросе
             self.log.info(f"Ошибка при запросе купонов MOEX для {secid}: {e}")
             return None
