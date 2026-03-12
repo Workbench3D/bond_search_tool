@@ -31,11 +31,13 @@ class MoexBonds(Base):
     highrisk: Mapped[bool]
     type: Mapped[str]
     accint: Mapped[float]
+    accint_percent: Mapped[float]
     price: Mapped[float]
     moex_yield: Mapped[float]
     amortizations: Mapped[bool]
     floater: Mapped[bool]
     sum_coupon: Mapped[float]
+    sum_coupon_percent: Mapped[float]
     year_percent: Mapped[float]
     last_updated: Mapped[datetime] = mapped_column(
         onupdate=text("TIMEZONE('utc', now())"),

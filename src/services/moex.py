@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from time import time
 import logging
 from aiohttp import ClientSession, ClientError
@@ -95,25 +95,50 @@ class Bond(MoexStrategy):
             for secid in list_bond:
                 bond_info = await self._get_detail_bond(session=session, secid=secid)
                 moex_yield = await self._get_moex_yield(session=session, secid=secid)
-                coupons = await self._get_amortization(session=session, secid=secid)
+                if not bond_info or not moex_yield:
+                    continue
+
+                coupons = await self._get_amortization(
+                    session=session,
+                    secid=secid,
+                    coupon_frequency=bond_info.coupon_frequency,
+                )
                 if not bond_info or not moex_yield or not coupons:
                     continue
 
                 price = moex_yield.price
-                accint = moex_yield.accint
                 face_value = bond_info.face_value
                 days_to_redemption = bond_info.days_to_redemption
                 sum_coupon = coupons.sum_coupon
+                sum_coupon_percent = coupons.sum_coupon_percent
                 if price == 0 or days_to_redemption == 0:
                     continue
 
+                # Расчет НКД самостоятельно на основе дат купонов
+                accint, accint_percent = self._calc_accint(
+                    coupons=coupons.coupons,
+                    face_value=face_value,
+                )
+
+                # self.log.info(f"[{secid}] Расчет доходности:")
+                # self.log.info(
+                #     f"  price={price}, accint={accint}, accint_percent={accint_percent}"
+                # )
+                # self.log.info(
+                #     f"  face_value={face_value}, days_to_redemption={days_to_redemption}"
+                # )
+                # self.log.info(
+                #     f"  sum_coupon={sum_coupon}, sum_coupon_percent={sum_coupon_percent}"
+                # )
+
                 year_percent = await self._calc_bond(
                     price=price,
-                    accint=accint,
-                    face_value=face_value,
+                    accint=accint_percent,
                     days_to_redemption=days_to_redemption,
-                    sum_coupon=sum_coupon,
+                    sum_coupon_percent=sum_coupon_percent,
                 )
+
+                # self.log.info(f"[{secid}] Итоговая доходность: {year_percent}%")
 
                 bond_data = {
                     "shortname": bond_info.short_name,
@@ -131,11 +156,13 @@ class Bond(MoexStrategy):
                     "highrisk": bond_info.high_risk,
                     "type": bond_info.type,
                     "accint": accint,
+                    "accint_percent": accint_percent,
                     "price": price,
                     "moex_yield": moex_yield.moex_yield,
                     "amortizations": coupons.amortizations,
                     "floater": coupons.floater,
                     "sum_coupon": sum_coupon,
+                    "sum_coupon_percent": sum_coupon_percent,
                     "year_percent": year_percent,
                 }
 
@@ -182,7 +209,7 @@ class Bond(MoexStrategy):
             return None
 
     async def _get_moex_yield(self, session: ClientSession, secid: str) -> YieldDataModel | None:
-        """Получение доходности, цены и НКД"""
+        """Получение доходности и цены"""
 
         # Формирование URL для запроса истории доходности
         method_url = f"/iss/engines/stock/markets/bonds/securities/{secid}"
@@ -190,7 +217,6 @@ class Bond(MoexStrategy):
             "iss.meta": "off",
             "iss.only": "securities, marketdata",
             "marketdata.columns": "LAST, MARKETPRICE, YIELD",
-            "securities.columns": "ACCRUEDINT",
             "marketprice_board": 1,
         }
 
@@ -213,7 +239,6 @@ class Bond(MoexStrategy):
                 if raw_yield.last_price == 0 and raw_yield.marketprice != 0:
                     price = raw_yield.marketprice
                 moex_yield = {
-                    "accint": raw_yield.accint,
                     "price": price,
                     "moex_yield": raw_yield.moex_yield,
                 }
@@ -231,9 +256,13 @@ class Bond(MoexStrategy):
             self.log.info(f"Ошибка при обработке доходности MOEX для {secid}: {e}")
             return None
 
-    async def _get_amortization(self, session: ClientSession, secid: str) -> CouponDataModel | None:
+    async def _get_amortization(
+        self,
+        session: ClientSession,
+        secid: str,
+        coupon_frequency: int,
+    ) -> CouponDataModel | None:
         """Получение значений амортизации, плавающего купона и суммы купонов"""
-
 
         date_now = datetime.now()
         method_url = f"/iss/securities/{secid}/bondization"
@@ -241,7 +270,7 @@ class Bond(MoexStrategy):
             "iss.meta": "off",
             "iss.only": "amortizations,coupons",
             "amortizations.columns": "facevalue",
-            "coupons.columns": "coupondate, value",
+            "coupons.columns": "coupondate, value, valueprc",
             "limit": "unlimited",
         }
         try:
@@ -254,26 +283,59 @@ class Bond(MoexStrategy):
                 amortizations = len(response.amortizations.data) > 1
 
                 sum_coupon = 0
+                sum_coupon_percent = 0
                 floater = False
                 coupons = response.coupons
-                coupons = {datetime.strptime(key, "%Y-%m-%d"): value for key, value in coupons.data}
-                for key, value in coupons.items():
-                    delta = key - date_now
-                    if delta.days > 0:
-                        coupon = value
-                        if coupon is None:
-                            floater = True
-                            coupon = 0
-                        sum_coupon += coupon
-                sum_coupon = round(sum_coupon, 2)
+                # coupons.data - это список [coupondate, value, valueprc]
+                # valueprc - это годовой процент купона
+                # Сохраняем все купоны для расчета НКД
+                coupons_list: list[tuple[date, float, float]] = []
 
-                coupons = {
+                # self.log.info(f"[{secid}] Купонов найдено: {len(coupons.data)}")
+                # self.log.info(f"[{secid}] Частота выплат: {coupon_frequency}")
+
+                coupons_data = {
+                    datetime.strptime(item[0], "%Y-%m-%d").date(): (item[1], item[2])
+                    for item in coupons.data
+                }
+                for coupon_date, (coupon_value, coupon_rate_year) in coupons_data.items():
+                    # Расчет процента за один купон: годовой процент / частоту выплат
+                    coupon_percent = coupon_rate_year / coupon_frequency if coupon_frequency > 0 else 0
+
+                    # Сохраняем данные о купоне для расчета НКД
+                    coupons_list.append((coupon_date, coupon_value, coupon_rate_year))
+
+                    delta = coupon_date - date_now.date()
+                    if delta.days > 0:
+                        # self.log.info(
+                        #     f"[{secid}] Купон {coupon_date}: value={coupon_value}, "
+                        #     f"rate_year={coupon_rate_year}%, coupon_percent={coupon_percent:.4f}%"
+                        # )
+
+                        if coupon_value is None:
+                            floater = True
+                            coupon_value = 0
+                            coupon_percent = 0
+
+                        sum_coupon += coupon_value
+                        sum_coupon_percent += coupon_percent
+
+                # self.log.info(
+                #     f"[{secid}] Сумма купонов: валюта={sum_coupon}, "
+                #     f"процент={sum_coupon_percent:.4f}"
+                # )
+                sum_coupon = round(sum_coupon, 2)
+                sum_coupon_percent = round(sum_coupon_percent, 2)
+
+                coupons_data_model = {
                     "amortizations": amortizations,
                     "floater": floater,
                     "sum_coupon": sum_coupon,
+                    "sum_coupon_percent": sum_coupon_percent,
+                    "coupons": coupons_list,
                 }
 
-                coupons = CouponDataModel.model_validate(coupons)
+                coupons = CouponDataModel.model_validate(coupons_data_model)
 
                 return coupons
         except ClientError as e:
@@ -285,37 +347,109 @@ class Bond(MoexStrategy):
             self.log.info(f"Ошибка при обработке купонов MOEX для {secid}: {e}")
             return None
 
+    def _calc_accint(
+        self,
+        coupons: list[tuple[date, float, float]],
+        face_value: float,
+    ) -> tuple[float, float]:
+        """
+        Расчет НКД в валюте и в процентах от номинала.
+        
+        Возвращает: (accint_value, accint_percent)
+        """
+        today = datetime.now().date()
+        
+        # Фильтруем будущие купоны
+        future_coupons = [(d, v, r) for d, v, r in coupons if d > today]
+
+        if not future_coupons:
+            # self.log.info("  [accint] Нет будущих купонов, НКД = 0")
+            return 0.0, 0.0
+
+        # Находим последний прошедший и следующий купоны
+        all_coupons_sorted = sorted(coupons, key=lambda x: x[0])
+
+        last_coupon_date = None
+        next_coupon_date = None
+        next_coupon_value = None
+
+        for i, (coupon_date, coupon_value, _) in enumerate(all_coupons_sorted):
+            if coupon_date > today:
+                next_coupon_date = coupon_date
+                next_coupon_value = coupon_value
+                if i > 0:
+                    last_coupon_date = all_coupons_sorted[i - 1][0]
+                break
+
+        # Если нет предыдущего купона, используем дату выпуска (упрощенно)
+        if last_coupon_date is None:
+            # Берем предыдущую дату от следующего купона на основе частоты
+            # Упрощенно: отнимаем ~6 месяцев для полугодовых купонов
+            last_coupon_date = next_coupon_date - timedelta(days=182)
+
+        if next_coupon_date is None or next_coupon_value is None:
+            # self.log.info("  [accint] Не удалось найти следующий купон, НКД = 0")
+            return 0.0, 0.0
+
+        # Расчет дней
+        days_in_period = (next_coupon_date - last_coupon_date).days
+        days_accrued = (today - last_coupon_date).days
+
+        if days_in_period <= 0:
+            # self.log.info("  [accint] Ошибка расчета дней, НКД = 0")
+            return 0.0, 0.0
+
+        # НКД не может быть больше суммы купона
+        days_accrued = min(days_accrued, days_in_period)
+
+        # Расчет НКД пропорционально дням
+        accint_value = next_coupon_value * (days_accrued / days_in_period)
+        accint_percent = (accint_value / face_value) * 100 if face_value > 0 else 0
+
+        # self.log.info(f"  [accint] last_coupon={last_coupon_date}, next_coupon={next_coupon_date}")
+        # self.log.info(f"  [accint] days_in_period={days_in_period}, days_accrued={days_accrued}")
+        # self.log.info(f"  [accint] coupon_value={next_coupon_value}, accint_value={round(accint_value, 2)}, accint_percent={round(accint_percent, 4)}")
+
+        return round(accint_value, 2), round(accint_percent, 4)
+
     async def _calc_bond(
         self,
         price: float,
         accint: float,
-        face_value: float,
         days_to_redemption: int,
-        sum_coupon: float,
+        sum_coupon_percent: float,
         commission: float = 0.3,
         tax: int = 13,
     ) -> float:
-        """Калькуляция реальной годовой доходности"""
+        """Калькуляция реальной годовой доходности от процентной цены"""
 
         year = 365
 
-        # Расчет цены покупки
-        buy_price = face_value * price / 100 + accint
+        # Расчет цены покупки (price уже в процентах от номинала)
+        buy_price = price + accint
         commission_buy = buy_price * commission / 100
         final_price = buy_price + commission_buy
 
-        # Расчет налога при продаже
-        sold_delta = face_value - final_price
+        # self.log.info(f"  [calc] buy_price={buy_price}, commission={commission_buy}, final_price={final_price}")
+
+        # Расчет налога при продаже (100% — погашение по номиналу)
+        sold_delta = 100 - final_price
         sold_tax = max(0, sold_delta * tax / 100)
 
-        # Расчет купонного дохода и налога на купоны
-        coupon_tax = sum_coupon * tax / 100
+        # self.log.info(f"  [calc] sold_delta={sold_delta}, sold_tax={sold_tax}")
+
+        # Расчет купонного дохода и налога на купоны (сумма купона в процентах)
+        coupon_tax = sum_coupon_percent * tax / 100
+
+        # self.log.info(f"  [calc] coupon_tax={coupon_tax}")
 
         # Расчет общего дохода и процента годовой доходности
-        income = (sold_delta + sum_coupon) - (sold_tax + coupon_tax)
+        income = (sold_delta + sum_coupon_percent) - (sold_tax + coupon_tax)
         profit = income / final_price * 100
         day_percent = profit / days_to_redemption
         year_percent = round(day_percent * year, 2)
+
+        # self.log.info(f"  [calc] income={income}, profit={profit}%, day_percent={day_percent}, year_percent={year_percent}")
 
         return year_percent
 

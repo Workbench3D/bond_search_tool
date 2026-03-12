@@ -57,7 +57,7 @@ class PrimaryDataModel(BaseModel):
 
 
 class YieldRawDataModel(BaseModel):
-    accint: float = Field(alias="ACCRUEDINT")
+    accint: float | None = Field(alias="ACCRUEDINT", default=0)
     last_price: float | None = Field(alias="LAST")
     # last_day_price: float | None = Field(alias='MARKETPRICE')
     marketprice: float | None = Field(alias="MARKETPRICE")
@@ -79,7 +79,6 @@ class YieldRawDataModel(BaseModel):
 
 
 class YieldDataModel(BaseModel):
-    accint: float
     price: float
     moex_yield: float
 
@@ -88,6 +87,8 @@ class CouponDataModel(BaseModel):
     amortizations: bool
     floater: bool
     sum_coupon: float
+    sum_coupon_percent: float
+    coupons: list[tuple[date, float, float]]  # [(date, value, valueprc), ...]
 
 
 class BondModel(BaseModel):
@@ -105,9 +106,11 @@ class BondModel(BaseModel):
     highrisk: bool
     type: str
     accint: float
+    accint_percent: float
     price: float
     moex_yield: float
     amortizations: bool
     floater: bool
     sum_coupon: float
+    sum_coupon_percent: float
     year_percent: float

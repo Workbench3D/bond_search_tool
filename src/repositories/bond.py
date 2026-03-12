@@ -47,9 +47,11 @@ class MoexORM(AbstractRepository):
                         "coupon_percent",
                         "coupon_value",
                         "sum_coupon",
+                        "sum_coupon_percent",
                         "highrisk",
                         "price",
                         "accint",
+                        "accint_percent",
                         "moex_yield",
                         "year_percent",
                     ]
