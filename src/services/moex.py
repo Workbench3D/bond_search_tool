@@ -49,7 +49,7 @@ class BondList(MoexStrategy):
                 page = 0
                 while True:
                     # Вывод информации о текущей странице
-                    self.log.info(f"Страница {page + 1}")
+                    self.log.info("Страница %d", page + 1)
 
                     start = 100 * page
                     params = {
@@ -74,7 +74,11 @@ class BondList(MoexStrategy):
 
         except ClientError as e:
             # Обработка ошибок при запросе
-            self.log.info(f"Ошибка при запросе сведений об списке облиг. для страницы {page + 1}: {e}")
+            self.log.info(
+                "Ошибка при запросе сведений об списке облиг. для страницы %d: %s",
+                page + 1,
+                e,
+            )
             yield []
 
 
@@ -120,15 +124,15 @@ class Bond(MoexStrategy):
                     face_value=face_value,
                 )
 
-                # self.log.info(f"[{secid}] Расчет доходности:")
+                # self.log.info("[%s] Расчет доходности:", secid)
                 # self.log.info(
-                #     f"  price={price}, accint={accint}, accint_percent={accint_percent}"
+                #     "  price=%s, accint=%s, accint_percent=%s", price, accint, accint_percent
                 # )
                 # self.log.info(
-                #     f"  face_value={face_value}, days_to_redemption={days_to_redemption}"
+                #     "  face_value=%s, days_to_redemption=%s", face_value, days_to_redemption
                 # )
                 # self.log.info(
-                #     f"  sum_coupon={sum_coupon}, sum_coupon_percent={sum_coupon_percent}"
+                #     "  sum_coupon=%s, sum_coupon_percent=%s", sum_coupon, sum_coupon_percent
                 # )
 
                 year_percent = await self._calc_bond(
@@ -138,7 +142,7 @@ class Bond(MoexStrategy):
                     sum_coupon_percent=sum_coupon_percent,
                 )
 
-                # self.log.info(f"[{secid}] Итоговая доходность: {year_percent}%")
+                # self.log.info("[%s] Итоговая доходность: %s%%", secid, year_percent)
 
                 bond_data = {
                     "shortname": bond_info.short_name,
@@ -172,7 +176,9 @@ class Bond(MoexStrategy):
 
         return result
 
-    async def _get_detail_bond(self, session: ClientSession, secid: str) -> PrimaryDataModel | None:
+    async def _get_detail_bond(
+        self, session: ClientSession, secid: str
+    ) -> PrimaryDataModel | None:
         """Получение общей детальной информации по облигации"""
 
         # Формирование URL для запроса информации об облигации
@@ -186,7 +192,9 @@ class Bond(MoexStrategy):
         try:
             # Запрос информации об облигации
             url = f"{self._API_MOEX_URL}{method_url}.json"
-            async with session.get(url=url, params=params, headers=self.headers) as response:
+            async with session.get(
+                url=url, params=params, headers=self.headers
+            ) as response:
                 response_bond = await response.json()
                 response = PrimaryRequestModel.model_validate(response_bond)
                 desc = response.description
@@ -201,14 +209,16 @@ class Bond(MoexStrategy):
 
         except ClientError as e:
             # Обработка ошибок при запросе
-            self.log.info(f"Ошибка при запросе сведений об облиг. для {secid}: {e}")
+            self.log.info("Ошибка при запросе сведений об облиг. для %s: %s", secid, e)
             return None
         except (KeyError, IndexError, TypeError, ValueError) as e:
             # Обработка ошибок при обработке данных
-            self.log.info(f"Ошибка при обработке сведений облиг. для {secid}: {e}")
+            self.log.info("Ошибка при обработке сведений облиг. для %s: %s", secid, e)
             return None
 
-    async def _get_moex_yield(self, session: ClientSession, secid: str) -> YieldDataModel | None:
+    async def _get_moex_yield(
+        self, session: ClientSession, secid: str
+    ) -> YieldDataModel | None:
         """Получение доходности и цены"""
 
         # Формирование URL для запроса истории доходности
@@ -223,7 +233,9 @@ class Bond(MoexStrategy):
         try:
             # Запрос истории доходности
             url = f"{self._API_MOEX_URL}{method_url}.json"
-            async with session.get(url=url, params=params, headers=self.headers) as response:
+            async with session.get(
+                url=url, params=params, headers=self.headers
+            ) as response:
                 response_bond = await response.json()
                 response = YieldRequestModel.model_validate(response_bond)
 
@@ -249,11 +261,11 @@ class Bond(MoexStrategy):
 
         except ClientError as e:
             # Обработка ошибок при запросе
-            self.log.info(f"Ошибка при запросе доходности MOEX для {secid}: {e}")
+            self.log.info("Ошибка при запросе доходности MOEX для %s: %s", secid, e)
             return None
         except (IndexError, TypeError, ValueError) as e:
             # Обработка ошибок при обработке данных
-            self.log.info(f"Ошибка при обработке доходности MOEX для {secid}: {e}")
+            self.log.info("Ошибка при обработке доходности MOEX для %s: %s", secid, e)
             return None
 
     async def _get_amortization(
@@ -275,7 +287,9 @@ class Bond(MoexStrategy):
         }
         try:
             url = f"{self._API_MOEX_URL}{method_url}.json"
-            async with session.get(url=url, params=params, headers=self.headers) as response:
+            async with session.get(
+                url=url, params=params, headers=self.headers
+            ) as response:
                 response_bond = await response.json()
 
                 response = CouponRequestModel.model_validate(response_bond)
@@ -291,16 +305,23 @@ class Bond(MoexStrategy):
                 # Сохраняем все купоны для расчета НКД
                 coupons_list: list[tuple[date, float, float]] = []
 
-                # self.log.info(f"[{secid}] Купонов найдено: {len(coupons.data)}")
-                # self.log.info(f"[{secid}] Частота выплат: {coupon_frequency}")
+                # self.log.info("[%s] Купонов найдено: %d", secid, len(coupons.data))
+                # self.log.info("[%s] Частота выплат: %d", secid, coupon_frequency)
 
                 coupons_data = {
                     datetime.strptime(item[0], "%Y-%m-%d").date(): (item[1], item[2])
                     for item in coupons.data
                 }
-                for coupon_date, (coupon_value, coupon_rate_year) in coupons_data.items():
+                for coupon_date, (
+                    coupon_value,
+                    coupon_rate_year,
+                ) in coupons_data.items():
                     # Расчет процента за один купон: годовой процент / частоту выплат
-                    coupon_percent = coupon_rate_year / coupon_frequency if coupon_frequency > 0 else 0
+                    coupon_percent = (
+                        coupon_rate_year / coupon_frequency
+                        if coupon_frequency > 0
+                        else 0
+                    )
 
                     # Сохраняем данные о купоне для расчета НКД
                     coupons_list.append((coupon_date, coupon_value, coupon_rate_year))
@@ -308,8 +329,8 @@ class Bond(MoexStrategy):
                     delta = coupon_date - date_now.date()
                     if delta.days > 0:
                         # self.log.info(
-                        #     f"[{secid}] Купон {coupon_date}: value={coupon_value}, "
-                        #     f"rate_year={coupon_rate_year}%, coupon_percent={coupon_percent:.4f}%"
+                        #     "[%s] Купон %s: value=%s, rate_year=%s%%, coupon_percent=%.4f%%",
+                        #     secid, coupon_date, coupon_value, coupon_rate_year, coupon_percent
                         # )
 
                         if coupon_value is None:
@@ -321,8 +342,8 @@ class Bond(MoexStrategy):
                         sum_coupon_percent += coupon_percent
 
                 # self.log.info(
-                #     f"[{secid}] Сумма купонов: валюта={sum_coupon}, "
-                #     f"процент={sum_coupon_percent:.4f}"
+                #     "[%s] Сумма купонов: валюта=%s, процент=%.4f",
+                #     secid, sum_coupon, sum_coupon_percent
                 # )
                 sum_coupon = round(sum_coupon, 2)
                 sum_coupon_percent = round(sum_coupon_percent, 2)
@@ -340,11 +361,11 @@ class Bond(MoexStrategy):
                 return coupons
         except ClientError as e:
             # Обработка ошибок при запросе
-            self.log.info(f"Ошибка при запросе купонов MOEX для {secid}: {e}")
+            self.log.info("Ошибка при запросе купонов MOEX для %s: %s", secid, e)
             return None
         except (IndexError, TypeError, ValueError) as e:
             # Обработка ошибок при обработке данных
-            self.log.info(f"Ошибка при обработке купонов MOEX для {secid}: {e}")
+            self.log.info("Ошибка при обработке купонов MOEX для %s: %s", secid, e)
             return None
 
     def _calc_accint(
@@ -354,11 +375,11 @@ class Bond(MoexStrategy):
     ) -> tuple[float, float]:
         """
         Расчет НКД в валюте и в процентах от номинала.
-        
+
         Возвращает: (accint_value, accint_percent)
         """
         today = datetime.now().date()
-        
+
         # Фильтруем будущие купоны
         future_coupons = [(d, v, r) for d, v, r in coupons if d > today]
 
@@ -406,9 +427,12 @@ class Bond(MoexStrategy):
         accint_value = next_coupon_value * (days_accrued / days_in_period)
         accint_percent = (accint_value / face_value) * 100 if face_value > 0 else 0
 
-        # self.log.info(f"  [accint] last_coupon={last_coupon_date}, next_coupon={next_coupon_date}")
-        # self.log.info(f"  [accint] days_in_period={days_in_period}, days_accrued={days_accrued}")
-        # self.log.info(f"  [accint] coupon_value={next_coupon_value}, accint_value={round(accint_value, 2)}, accint_percent={round(accint_percent, 4)}")
+        # self.log.info("  [accint] last_coupon=%s, next_coupon=%s", last_coupon_date, next_coupon_date)
+        # self.log.info("  [accint] days_in_period=%d, days_accrued=%d", days_in_period, days_accrued)
+        # self.log.info(
+        #     "  [accint] coupon_value=%s, accint_value=%s, accint_percent=%s",
+        #     next_coupon_value, round(accint_value, 2), round(accint_percent, 4)
+        # )
 
         return round(accint_value, 2), round(accint_percent, 4)
 
@@ -430,18 +454,18 @@ class Bond(MoexStrategy):
         commission_buy = buy_price * commission / 100
         final_price = buy_price + commission_buy
 
-        # self.log.info(f"  [calc] buy_price={buy_price}, commission={commission_buy}, final_price={final_price}")
+        # self.log.info("  [calc] buy_price=%s, commission=%s, final_price=%s", buy_price, commission_buy, final_price)
 
         # Расчет налога при продаже (100% — погашение по номиналу)
         sold_delta = 100 - final_price
         sold_tax = max(0, sold_delta * tax / 100)
 
-        # self.log.info(f"  [calc] sold_delta={sold_delta}, sold_tax={sold_tax}")
+        # self.log.info("  [calc] sold_delta=%s, sold_tax=%s", sold_delta, sold_tax)
 
         # Расчет купонного дохода и налога на купоны (сумма купона в процентах)
         coupon_tax = sum_coupon_percent * tax / 100
 
-        # self.log.info(f"  [calc] coupon_tax={coupon_tax}")
+        # self.log.info("  [calc] coupon_tax=%s", coupon_tax)
 
         # Расчет общего дохода и процента годовой доходности
         income = (sold_delta + sum_coupon_percent) - (sold_tax + coupon_tax)
@@ -449,7 +473,7 @@ class Bond(MoexStrategy):
         day_percent = profit / days_to_redemption
         year_percent = round(day_percent * year, 2)
 
-        # self.log.info(f"  [calc] income={income}, profit={profit}%, day_percent={day_percent}, year_percent={year_percent}")
+        # self.log.info("  [calc] income=%s, profit=%s%%, day_percent=%s, year_percent=%s", income, profit, day_percent, year_percent)
 
         return year_percent
 
@@ -474,4 +498,4 @@ class ContextStrategy:
             update_data(bonds=bonds)
 
         time_result = round((time() - start), 2)
-        self.log.info(f"Время выполнения - {time_result}")
+        self.log.info("Время выполнения - %s", time_result)
