@@ -78,6 +78,7 @@ class MoexORM(AbstractRepository):
         floater: bool,
         days_to_redemption: tuple,
         ofz_bonds: bool,
+        face_unit: str | None,
         limit: int,
     ):
         with session_factory() as session:
@@ -98,6 +99,9 @@ class MoexORM(AbstractRepository):
 
             if ofz_bonds:
                 query_filter.append(MoexBonds.type == "ofz_bond")
+
+            if face_unit and face_unit != "all":
+                query_filter.append(MoexBonds.face_unit == face_unit)
 
             query = (
                 query.filter(*query_filter)

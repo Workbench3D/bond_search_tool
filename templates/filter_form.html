@@ -16,6 +16,20 @@
         <input type="number" class="form-control" id="inputMinListLevel" name="min_list_level" value={{ min_list_level }}>
     </div>
     <div>
+        <label for="inputFaceUnit">Валюта</label>
+        <select class="form-control" id="inputFaceUnit" name="face_unit">
+            <option value="all" {% if face_unit == "all" %}selected{% endif %}>Все</option>
+            <option value="SUR" {% if face_unit == "SUR" %}selected{% endif %}>RUB (₽)</option>
+            <option value="USD" {% if face_unit == "USD" %}selected{% endif %}>USD ($)</option>
+            <option value="EUR" {% if face_unit == "EUR" %}selected{% endif %}>EUR (€)</option>
+            <option value="CNY" {% if face_unit == "CNY" %}selected{% endif %}>CNY (¥)</option>
+            <option value="GBP" {% if face_unit == "GBP" %}selected{% endif %}>GBP (£)</option>
+            <option value="CHF" {% if face_unit == "CHF" %}selected{% endif %}>CHF</option>
+            <option value="KGS" {% if face_unit == "KGS" %}selected{% endif %}>KGS (Сом)</option>
+            <option value="AED" {% if face_unit == "AED" %}selected{% endif %}>AED (Дирхам)</option>
+        </select>
+    </div>
+    <div>
         <input type="checkbox" id="inputAmortizations" name="amortizations" {% if amortizations %}checked{% endif %}>
         <label for="inputAmortizations">Амортизация</label>
     </div>

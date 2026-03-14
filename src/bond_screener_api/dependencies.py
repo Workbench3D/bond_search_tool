@@ -12,6 +12,7 @@ def fastapi_service(
     max_days_to_redemption: int | None = None,
     min_days_to_redemption: int | None = None,
     ofz_bonds: bool | None = None,
+    face_unit: str | None = None,
     limit: int | None = None,
 ):
     if fields is None:
@@ -64,6 +65,7 @@ def fastapi_service(
         floater=floater,
         days_to_redemption=between_days_to_redemption,
         ofz_bonds=ofz_bonds,
+        face_unit=face_unit,
         limit=limit,
     )
 

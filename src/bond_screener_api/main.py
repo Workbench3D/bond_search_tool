@@ -38,6 +38,7 @@ async def get_view_bonds(
     ofz_bonds: bool = Query(False),
     max_days_to_redemption: int = Query(1500),
     min_days_to_redemption: int = Query(500),
+    face_unit: str = Query("all"),
 ):
     columns = fastapi_service.columns
     data = fastapi_service.data
@@ -56,6 +57,7 @@ async def get_view_bonds(
             "ofz_bonds": ofz_bonds,
             "max_days_to_redemption": max_days_to_redemption,
             "min_days_to_redemption": min_days_to_redemption,
+            "face_unit": face_unit,
         },
     )
 
