@@ -306,7 +306,12 @@ class Bond(MoexStrategy):
                 coupons_list: list[tuple[date, float, float]] = []
 
                 # self.log.info("[%s] Купонов найдено: %d", secid, len(coupons.data))
-                # self.log.info("[%s] Частота выплат: %d", secid, coupon_frequency)
+                # self.log.info("[%s] Частота выплат: %s", secid, coupon_frequency)
+
+                # Проверка coupon_frequency на None
+                if coupon_frequency is None or coupon_frequency <= 0:
+                    self.log.warning("[%s] Неверная частота купонов, пропускаем", secid)
+                    return None
 
                 coupons_data = {
                     datetime.strptime(item[0], "%Y-%m-%d").date(): (item[1], item[2])
@@ -316,12 +321,13 @@ class Bond(MoexStrategy):
                     coupon_value,
                     coupon_rate_year,
                 ) in coupons_data.items():
+                    # Пропускаем купоны без значения процента (флоатеры)
+                    if coupon_rate_year is None:
+                        floater = True
+                        continue
+                        
                     # Расчет процента за один купон: годовой процент / частоту выплат
-                    coupon_percent = (
-                        coupon_rate_year / coupon_frequency
-                        if coupon_frequency > 0
-                        else 0
-                    )
+                    coupon_percent = coupon_rate_year / coupon_frequency
 
                     # Сохраняем данные о купоне для расчета НКД
                     coupons_list.append((coupon_date, coupon_value, coupon_rate_year))
@@ -370,7 +376,7 @@ class Bond(MoexStrategy):
 
     def _calc_accint(
         self,
-        coupons: list[tuple[date, float, float]],
+        coupons: list[tuple[date, float | None, float | None]],
         face_value: float,
     ) -> tuple[float, float]:
         """
@@ -380,8 +386,8 @@ class Bond(MoexStrategy):
         """
         today = datetime.now().date()
 
-        # Фильтруем будущие купоны
-        future_coupons = [(d, v, r) for d, v, r in coupons if d > today]
+        # Фильтруем будущие купоны с известными значениями (не флоатеры)
+        future_coupons = [(d, v, r) for d, v, r in coupons if d > today and v is not None]
 
         if not future_coupons:
             # self.log.info("  [accint] Нет будущих купонов, НКД = 0")
@@ -395,7 +401,7 @@ class Bond(MoexStrategy):
         next_coupon_value = None
 
         for i, (coupon_date, coupon_value, _) in enumerate(all_coupons_sorted):
-            if coupon_date > today:
+            if coupon_date > today and coupon_value is not None:
                 next_coupon_date = coupon_date
                 next_coupon_value = coupon_value
                 if i > 0:

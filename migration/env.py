@@ -32,8 +32,9 @@ user = os.getenv("POSTGRES_USER", default="admin")
 password = os.getenv("POSTGRES_PASSWORD", default="password")
 host = os.getenv("POSTGRES_HOST", default="localhost")
 name = os.getenv("POSTGRES_DB", default="moex")
+port = os.getenv("POSTGRES_PORT", default=5432)
 
-url_db = f"postgresql+psycopg://{user}:{password}@{host}/{name}"
+url_db = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}"
 
 
 def run_migrations_offline() -> None:

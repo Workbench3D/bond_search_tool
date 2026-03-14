@@ -30,9 +30,9 @@ class PrimaryDataModel(BaseModel):
     secid: str = Field(alias="SECID")
     isin: str = Field(alias="ISIN")
     matdate: date = Field(alias="MATDATE", default=date(2000, 1, 1))
-    initial_face_value: int = Field(alias="INITIALFACEVALUE")
+    initial_face_value: float = Field(alias="INITIALFACEVALUE", default=0)
     face_unit: str = Field(alias="FACEUNIT")
-    list_level: int = Field(alias="LISTLEVEL")
+    list_level: int = Field(alias="LISTLEVEL", default=3)
     days_to_redemption: int = Field(alias="DAYSTOREDEMPTION", default=0)
     face_value: float = Field(alias="FACEVALUE")
     is_qualified_investors: bool = Field(alias="ISQUALIFIEDINVESTORS")
@@ -88,7 +88,7 @@ class CouponDataModel(BaseModel):
     floater: bool
     sum_coupon: float
     sum_coupon_percent: float
-    coupons: list[tuple[date, float, float]]  # [(date, value, valueprc), ...]
+    coupons: list[tuple[date, float | None, float | None]]  # [(date, value, valueprc), ...]
 
 
 class BondModel(BaseModel):
